@@ -1,0 +1,11 @@
+/* Hide chainlit branding: watermark logo, splash loader */
+.chainlit-watermark, a[href*="chainlit"], #root > div > div:first-child > div:has(> img[alt="logo"]) {
+  display: none !important;
+}
+/* splash / loading screen (mosaic loader) */
+#splash, .mosaic, [class*="loading-screen"], [id*="splash"] {
+  background: #f7f8fb !important;
+}
+.mosaic img, [alt="Chainlit logo"] {
+  display: none !important;
+}

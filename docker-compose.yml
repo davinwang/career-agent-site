@@ -1,0 +1,45 @@
+services:
+  # Public side: recruiters/HR ask questions about the owner's background.
+  public:
+    build: ./app
+    image: job-agent-app:latest
+    container_name: jas-public
+    env_file: .env
+    environment:
+      SIDE: public
+      PORT: 8000
+    volumes:
+      - ./data:/data
+      - ./app/custom-public:/srv/public:ro
+      - ./app/public-static:/static
+      - ./app/custom-public/index-patched.html:/usr/local/lib/python3.11/site-packages/chainlit/frontend/dist/index.html:ro
+    restart: unless-stopped
+
+  # Admin side: owner uploads resume / code / docs, agent digests them.
+  admin:
+    build: ./app
+    image: job-agent-app:latest
+    container_name: jas-admin
+    env_file: .env
+    environment:
+      SIDE: admin
+      PORT: 8000
+    volumes:
+      - ./data:/data
+      - ./app/custom-public:/srv/public:ro
+      - ./app/public-static:/static
+      - ./app/custom-public/index-patched.html:/usr/local/lib/python3.11/site-packages/chainlit/frontend/dist/index.html:ro
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: jas-nginx
+    ports:
+      - "8090:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./app/public-static:/usr/share/nginx/html:ro
+    depends_on:
+      - public
+      - admin
+    restart: unless-stopped

@@ -1,0 +1,8 @@
+*
+!common/
+!requirements.lock
+!chainlit-config.toml
+!public.py
+!admin.py
+!entrypoint.py
+!.chainlit/
