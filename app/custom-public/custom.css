@@ -1,5 +1,8 @@
-/* Hide chainlit branding: watermark logo, splash loader */
+/* Hide chainlit branding: watermark logo, splash loader, assistant avatar (default logo) */
 .chainlit-watermark, a[href*="chainlit"], #root > div > div:first-child > div:has(> img[alt="logo"]) {
+  display: none !important;
+}
+img[alt="logo"], [alt="logo"] {
   display: none !important;
 }
 /* splash / loading screen (mosaic loader) */
@@ -8,4 +11,10 @@
 }
 .mosaic img, [alt="Chainlit logo"] {
   display: none !important;
+}
+
+/* assistant avatar: grey pulsing placeholder circle -> transparent */
+span.relative.flex.shrink-0.rounded-full.h-5.w-5.mt-\[3px\] div.animate-pulse {
+  background: transparent !important;
+  animation: none !important;
 }

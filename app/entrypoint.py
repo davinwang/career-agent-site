@@ -1,5 +1,7 @@
 """Start chainlit for the configured SIDE.
-Public side runs at site root (/); admin runs under /admin subpath."""
+Public chat runs under /chat subpath; admin runs under /admin subpath.
+The resume static page (served by nginx) is the site's landing page.
+"""
 import os
 
 side = os.environ.get("SIDE", "public")
@@ -11,9 +13,7 @@ cmd = [
     "--port", os.environ.get("PORT", "8000"),
     "--headless",
 ]
-# Admin stays under a subpath so nginx can route it cleanly.
-# Public chat is the whole site -> no root-path.
-if side == "admin":
-    cmd += ["--root-path", "/admin"]
+# Both sides run under a subpath so nginx can route them cleanly.
+cmd += ["--root-path", "/admin" if side == "admin" else "/chat"]
 
 os.execvp("chainlit", cmd)
