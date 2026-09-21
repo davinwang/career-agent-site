@@ -394,7 +394,9 @@ opentelemetry-util-http==0.62b1
     # via
     #   opentelemetry-instrumentation-requests
     #   opentelemetry-instrumentation-urllib3
+opencv-python-headless==4.10.0.84
 packaging==26.3
+pillow==11.0.0
     # via
     #   chainlit
     #   literalai
@@ -533,3 +535,5 @@ yarl==1.24.5
     # via aiohttp
 zipp==4.1.0
     # via importlib-metadata
+reportlab==5.0.1
+    # via job-agent (resume PDF generation, CJK-capable via built-in CID fonts)

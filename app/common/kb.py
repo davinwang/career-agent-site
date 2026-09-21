@@ -222,20 +222,56 @@ def delete_file(title_sub: str) -> str:
 RESUME_DATA_NAME = "resume-data.json"
 
 
-def _resume_page_path() -> str:
+def _resume_page_path(lang: str = "") -> str:
     # inside containers the static dir is bind-mounted read-write for admin
-    return os.environ.get("RESUME_STATIC_DIR", "/static") + "/" + RESUME_DATA_NAME
+    suffix = "" if lang in ("", "zh", "zh-cn", "zh-CN") else "." + lang.lower()
+    return os.environ.get("RESUME_STATIC_DIR", "/static") + "/resume-data" + suffix + ".json"
 
 
-def write_resume_page(data: dict) -> str:
-    """Write resume-data.json consumed by the nginx-served landing page."""
+def normalize_lang(lang: str) -> str:
+    """'en-US' -> 'en', 'zh-CN' -> 'zh' (default). Unknown/empty -> 'zh'."""
+    l = (lang or "").strip().lower().split("-")[0]
+    return l if l and l != "zh" else "zh"
+
+
+def list_resume_langs() -> list[dict]:
+    """Languages that have a published resume page: [{code,label}], default first."""
+    base = os.environ.get("RESUME_STATIC_DIR", "/static")
+    labels = {"zh": "中文", "en": "English", "ja": "日本語", "fr": "Français",
+              "de": "Deutsch", "es": "Español", "ko": "한국어", "ru": "Русский"}
+    langs = []
+    for f in os.listdir(base):
+        m = re.fullmatch(r"resume-data(?:\.([a-z]{2}))?\.json", f)
+        if m:
+            code = m.group(1) or "zh"
+            if code not in langs:
+                langs.append(code)
+    if "zh" not in langs:
+        langs.insert(0, "zh")
+    return [{"code": c, "label": labels.get(c, c)} for c in sorted(langs, key=lambda x: (x != "zh", x))]
+
+
+def write_lang_manifest() -> str:
+    dest = os.path.join(os.environ.get("RESUME_STATIC_DIR", "/static"), "resume-langs.json")
+    try:
+        tmp = dest + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"langs": list_resume_langs()}, f, ensure_ascii=False)
+        os.replace(tmp, dest)
+        return ", ".join(l["code"] for l in list_resume_langs())
+    except OSError as e:
+        return f"error writing lang manifest: {e}"
+
+
+def write_resume_page(data: dict, lang: str = "zh") -> str:
+    """Write resume-data[.lang].json consumed by the nginx-served landing page."""
     required = ["name"]
     for k in required:
         if not data.get(k):
             return f"error: field '{k}' is required"
     allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills"]
     clean = {k: data[k] for k in allowed if k in data and data[k] not in (None, "", [])}
-    dest = _resume_page_path()
+    dest = _resume_page_path(lang)
     try:
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         tmp = dest + ".tmp"
@@ -244,12 +280,13 @@ def write_resume_page(data: dict) -> str:
         os.replace(tmp, dest)
     except OSError as e:
         return f"error writing resume page: {e}"
-    return f"resume page updated ({len(json.dumps(clean))} bytes): {', '.join(clean.keys())}"
+    return (f"resume page [{normalize_lang(lang)}] updated "
+            f"({len(json.dumps(clean))} bytes): {', '.join(clean.keys())}")
 
 
-def read_resume_page() -> str:
+def read_resume_page(lang: str = "zh") -> str:
     try:
-        with open(_resume_page_path(), "r", encoding="utf-8") as f:
+        with open(_resume_page_path(lang), "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "(resume page not published yet - showing placeholder template)"
+        return f"(resume page [{normalize_lang(lang)}] not published yet)"

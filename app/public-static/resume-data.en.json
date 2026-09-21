@@ -1,0 +1,179 @@
+{
+  "name": "Wang Dong (Davin)",
+  "status": "21 years of experience · Targeting Architect roles · Shanghai · Expecting 50–80K · Open to opportunities while employed",
+  "tags": [
+    "Java",
+    "System Architecture",
+    "DevOps/CI-CD",
+    "K8s Container Cloud",
+    "Domestic-Tech (Xinchuang) Transformation",
+    "LLM/Agent",
+    "FinTech",
+    "Futures & Securities",
+    "Payment & Clearing",
+    "Team Management"
+  ],
+  "summary": "A hybrid technical professional combining software engineering, project management and finance/accounting. Bachelor of Computer Science (Pilot Class) and Bachelor of Finance, plus a Master's in Accounting, all from Shanghai Jiao Tong University. 21 years of experience spanning ICBC Head Office, SAP China Research Institute, Microsoft China, and the payment-clearing and securities/futures industries, with roles as backend developer, product manager, technical manager, senior development manager and system architect. Skilled at building high-availability systems and DevOps/K8s container-cloud platforms from scratch, and led the architecture design and refactoring of core projects including an investment management system, market-data monitoring, an in-house App and the corporate website. Compressed the metric computation for 1,000+ funds from 4–8 hours to 3–5 minutes (100x+ efficiency gain). In recent years focused on domestic-tech (Xinchuang) transformation and applying LLM/Agent to financial scenarios, and independently delivered a low-code AI-assisted programming modernization project via Vibe Coding.",
+  "experience": [
+    {
+      "title": "Guotai Junan Futures Co., Ltd. · System Development (Architect)",
+      "meta": "2020.04 – Present",
+      "points": [
+        "Responsible for technical architecture planning and system design of company projects; led the build-out and refactoring of multiple in-house projects including the investment management system, the institutional client service website and the Guotai Junan Futures App, supporting the business's digital transformation.",
+        "Led unification of architecture across multiple projects, delivered prototype design and technology transfer for core systems, and drove architecture upgrade and refactoring of the investment management system, asset-management website and corporate website; optimized fund analysis performance, cutting processing time for 1,000+ funds from 4–8 hours to 3–5 minutes — a 100x+ efficiency gain.",
+        "Built the DevOps system and K8s container-cloud platform from scratch, automating the full development, testing and deployment pipeline with CI/CD coverage approaching 100%, and efficiently supporting delivery of domestic-tech (Xinchuang) transformation initiatives.",
+        "Explored domestic-tech (Xinchuang) technology paths and application of Large Language Models (LLM) in financial scenarios; completed technology selection, validation and pilot deployment, advancing intelligent service capabilities.",
+        "Responsible for technical talent acquisition and team pipeline development; established R&D standards and code review mechanisms, unified technical standards and improved team collaboration efficiency and engineering quality."
+      ]
+    },
+    {
+      "title": "Zhuhai Hengqin Jisheng Technology Co., Ltd. · Senior Development Manager",
+      "meta": "2018.03 – 2020.03",
+      "points": [
+        "Provided technical support to Guosheng Securities, part of the same Guosheng Financial Holding (002670.SZ) group; led architecture design and R&D team management for core systems including market-data monitoring and trading App backend.",
+        "Led customized backend development of the Guoshengtong App; designed and implemented an in-house bridging component replacing the vendor's C++ counter trading interface, converting complex trading logic into lightweight Lua scripting — significantly improving development efficiency and reducing maintenance cost.",
+        "Built a self-developed high-availability, high-concurrency market-data monitoring and stock price alert system supporting real-time quotes for 6,000+ stocks on the Shanghai and Shenzhen exchanges, with distributed deployment capability and stable operation for both A-share and 24-hour continuous markets such as Bitcoin.",
+        "Built and managed the technical team, recruited and developed core developers, established unified R&D standards and drove CI/CD adoption across projects with continuous integration coverage above 70%.",
+        "Key tech stack: Java, K8S, Rancher, C++, Lua, Redis, Kafka."
+      ]
+    },
+    {
+      "title": "Zhonghui Electronic Payment Co., Ltd. · Technical Manager",
+      "meta": "2015.08 – 2018.03",
+      "points": [
+        "The company was a leading player in domestic bank card acquiring, processing over RMB 1 trillion in annual acquiring volume; managed a 20-person technical team responsible for requirements analysis, architecture design and delivery of multiple bank card acquiring systems.",
+        "Owned core modules including the POS transaction system (ISO8583 protocol / HSM communication), clearing system (T+N / D+0 settlement logic) and risk control system, supporting merchant management, account management and transaction risk detection.",
+        "Led certification of the domestic UnionPay card payment service system for non-bank financial institutions and the international card industry payment security standard (PCI DSS) system certification.",
+        "Key technologies: JPOS, JMX, ISO8583, HSM."
+      ]
+    },
+    {
+      "title": "Microsoft (China) Co., Ltd. · Product Manager",
+      "meta": "2013.01 – 2015.07",
+      "points": [
+        "The Microsoft Commerce division is the backend payment and settlement system of Microsoft's online sales platform, supporting sales of Surface, Office 365, Windows Phone, Xbox and other hardware and software products. As product manager in the payment team, coordinated payment requirements from business units, worked with legal to assess compliance and with finance to analyze financial statement impact, authored requirement documents, reviewed system design and implementation costs with the engineering team, and managed development, testing and launch end to end.",
+        "Participated in the Xbox One launch online pre-order project, extending the credit card payment product with a pre-authorized credit payment method. Through effective cross-team communication and resource coordination, advanced the Xbox One pre-order date from June 19, 2013 to June 11, 2013 to precisely match the E3 gaming expo launch cadence, earning high recognition from the gaming division director.",
+        "Participated in the second-phase Office 365 launch project for the SMB market, helping design and implement the payment solution and supporting a successful business launch, with positive feedback from the business team."
+      ]
+    },
+    {
+      "title": "SAP (Beijing) Software Systems Co., Ltd. / SAP China Research Institute · Backend Developer (Dev Team Lead & Scrum Master)",
+      "meta": "2007.12 – 2013.01",
+      "points": [
+        "Worked in the EPM department of SAP China Research Institute, leading backend development; familiar with FI/CO, HANA and BPC modules and products, and proficient in Scrum agile development processes and practices.",
+        "2011.09–2013.01: Participated in development of the HANA Based Analytics and Customer Analytics products, leading the team through the full cycle from requirements analysis and architecture design to development and testing under high pressure, ensuring high-quality delivery and earning strong recognition from the German partner team.",
+        "2007.12–2011.09: Participated in development and maintenance of Business Planning and Consolidation (BPC), a product for senior executives such as CFOs/CEOs supporting financial budgeting and report consolidation; led the team in core module development and system optimization to ensure stability and scalability, and took on management responsibilities including product iteration planning, schedule control, risk identification and escalation."
+      ]
+    },
+    {
+      "title": "Industrial and Commercial Bank of China (ICBC) · Backend Developer / Project Manager",
+      "meta": "2005.07 – 2007.12",
+      "points": [
+        "Joined the Software Development Center of ICBC Head Office in July 2005, working closely with the Head Office Finance & Accounting Department; results were repeatedly recognized by business departments.",
+        "Served successively as project developer and project manager; strong backend development skills, familiar with financial accounting, performance evaluation systems and personal finance business, with knowledge of internal audit and interest rate liberalization.",
+        "Proficient in CMMI software development processes, with well-structured project management and system R&D experience."
+      ]
+    },
+    {
+      "title": "Education · Shanghai Jiao Tong University · Master of Accounting",
+      "meta": "2010 – 2013",
+      "points": [
+        "Master's degree in Accounting, Shanghai Jiao Tong University."
+      ]
+    },
+    {
+      "title": "Education · Shanghai Jiao Tong University · Bachelor of Finance",
+      "meta": "2002 – 2005",
+      "points": [
+        "Bachelor's degree in Finance, Shanghai Jiao Tong University."
+      ]
+    },
+    {
+      "title": "Education · Shanghai Jiao Tong University · Bachelor of Computer Science (Pilot Class)",
+      "meta": "2001 – 2005",
+      "points": [
+        "Bachelor's degree in Computer Science and Technology (Pilot Class), Shanghai Jiao Tong University.",
+        "Certifications: CET-6, Software Designer, CSM (Certified Scrum Master), Futures Practitioner Qualification."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Low-Code AI-Assisted Programming Modernization · Independent Delivery",
+      "meta": "VS Code Extension · Syntax highlighting/linting/completion/server communication/Agent Skill · 2025.09 – 2026.04",
+      "points": [
+        "Guotai Junan Futures used an outdated internal low-code platform that could not keep pace with the AI era; independently developed a VS Code extension to replace the existing low-code development environment.",
+        "Applied harness engineering to modernize the low-code development environment into one suited to AI-assisted programming: syntax highlighting, linting, code completion, server communication, Agent Skill and more.",
+        "99% of the project's own code was written via Vibe Coding.",
+        "Directly improved low-code developer productivity by 20%–100%; used by no fewer than 50 people, saving the company about RMB 2 million per year.",
+        "100+ iterations in six months — truly with AI, by AI, for AI."
+      ]
+    },
+    {
+      "title": "Guotai Junan Futures Investment Management Project · Backend Development",
+      "meta": "Calmar/Sharpe/IR/Sortino metrics · Multi-process & multi-threaded · Vectorized computing · 2023.11 – 2025.06",
+      "points": [
+        "Contributed to backend development of the investment management system, covering pre-investment analysis and post-investment management modules supporting investment decisions and return tracking for the company's proprietary capital.",
+        "The pre-investment module computes multi-dimensional metrics for private funds (Calmar, Sharpe, Information Ratio, Sortino, etc.), screens high-quality funds from an observation pool into strategy simulation via quantitative scoring, and integrates market indices, basis data and due diligence report management to improve researcher decision efficiency.",
+        "The post-investment module precisely calculates actual investment returns at fund, strategy and department level based on subscription/redemption records, NAV changes, fee accrual rules and index hedging trade data.",
+        "Combining multi-process, multi-threaded and vectorized computing to fully refactor the fund metric computation module, reducing key metric computation for 1,000+ funds from 90 seconds to 3–5 seconds and cutting overall system runtime from 4–8 hours to 3–5 minutes.",
+        "Led the design and implementation of whole-market quote data persistence, real-time exposure calculation and real-time stock index basis calculation, integrating and storing 2,000+ real-time stock index option quotes; a single server supports 20 concurrent users each viewing real-time basis for 16 stock index futures on one screen, ran stably through the extreme market conditions of the 2024 National Day holiday, and retains ample performance headroom."
+      ]
+    },
+    {
+      "title": "3rd Pazhou Algorithm Competition · Team Lead / Convener",
+      "meta": "Dify, LangChain, Agent · 2024.07 – 2024.08",
+      "points": [
+        "Focused on applying LLM and Agent technologies to real-world scenarios, exploring intelligent solutions in the legal and finance domains and strengthening model reasoning and system integration experience.",
+        "The preliminary-round solution closely matched the official reference answer, ranking in the top 20% overall."
+      ]
+    },
+    {
+      "title": "Guotai Junan Futures In-House App · Architecture & Implementation",
+      "meta": "HTTPDNS/CDN/API Gateway/K8s/DevOps · 2020.11 – 2021.07",
+      "points": [
+        "Led the end-to-end planning, technology selection and build-out of mid- and back-office systems from scratch, covering everything from server procurement and environment deployment to App launch.",
+        "Delivered high-availability architecture design and implementation across the full chain: client HTTPDNS, CDN, carrier lines, hardware firewalls, API gateway, application layer and databases.",
+        "Defined and enforced development standards and communication protocol specs, and coordinated full-chain performance planning with clear TPS targets and design goals, supporting an App design DAU of 1 million.",
+        "Delivered the project from initiation to full launch in only 6 months; simultaneously built the K8s container-cloud platform and DevOps platform to automate CI/CD.",
+        "Contributed code updates to selected open-source components (e.g. the Go-based OAuth2proxy) to enhance system security and compatibility."
+      ]
+    },
+    {
+      "title": "DevOps Platform · Architecture & Implementation",
+      "meta": "GitLab, Nexus, Helm, Kubernetes/Rancher, EFK · 2020.07 – 2021.02",
+      "points": [
+        "Set up GitLab code repositories, Nexus artifact repositories and a Helm app store, and migrated all legacy SVN code repositories.",
+        "Built unified CI/CD pipelines on GitLab and Kubernetes/Rancher so that front-end and back-end services are automatically built, deployed and released on commit, significantly improving release efficiency.",
+        "Built an EFK log collection and analysis platform for centralized log management and rapid troubleshooting; participated in technology selection and procurement decisions for the monitoring platform, advancing operations toward automation and visualization.",
+        "All backend applications achieved automatic packaging and one-click release, laying the groundwork for the subsequent successful launch of the Guotai Junan Futures in-house App."
+      ]
+    },
+    {
+      "title": "Guotai Junan Futures Corporate Website · Project Lead",
+      "meta": "National Crypto (SM), CDN, IPv6, penetration scanning, Classified Protection (MLPS) certification, Xinchuang transformation · 2020.05 – 2020.07",
+      "points": [
+        "Responsible for all aspects from requirements analysis, system design, development, testing and deployment to outsourced team management, daily operations, security drills, emergency drills, Classified Protection certification and Xinchuang transformation.",
+        "Ensured security and stability across details including national cryptography (SM), CDN, IPv6 and penetration scanning; participated multiple times in simulated cyber attack-defense drills and successfully withstood all of them."
+      ]
+    },
+    {
+      "title": "Guoshengtong App · Backend Development Lead",
+      "meta": "C++/Lua async bridging, asynchronous programming, Java, Consul, Ehcache/Redis · 2018.09 – 2019.08",
+      "points": [
+        "Guoshengtong App is the official mobile stock trading software of Guosheng Securities, with roughly 90,000–300,000 daily active users.",
+        "Responsible for overall App backend development and team management, including development standards, project management standards, release standards and operational emergency procedures, plus technical problem-solving and hiring.",
+        "The purchased middleware was written in C++ and Delphi accumulated over years in the securities industry and was extremely costly to maintain; led the team to solve C++/Lua asynchronous bridging, dramatically reducing maintenance cost while proving more stable than C++."
+      ]
+    }
+  ],
+  "skills": [
+    "Architecture: high-availability / high-concurrency system architecture, distributed deployment, multi-project architecture unification and refactoring, full-link performance planning (HTTPDNS/CDN/API gateway/database), TPS target design",
+    "Cloud-native & Ops: Kubernetes, Rancher container cloud, DevOps built from scratch, GitLab CI/CD, Nexus, Helm, EFK logging platform, SVN migration, monitoring platform selection",
+    "Backend & Middleware: Java, C++, Lua, Redis, Kafka, Consul, Ehcache, JPOS/JMX, ISO8583 protocol, HSM communication, asynchronous programming",
+    "Financial Business: futures / securities / payment & clearing, private fund metrics (Calmar/Sharpe/IR/Sortino), pre- and post-investment management, market monitoring and alerting, POS acquiring, PCI DSS and UnionPay non-bank institution certification, Xinchuang transformation, MLPS certification",
+    "AI Engineering: LLM deployment in financial scenarios, Dify, LangChain, Agent, VS Code extension development, Vibe Coding",
+    "Management & Credentials: R&D team management (20 people), technical hiring and pipeline building, R&D standards and code review mechanisms, CSM (Certified Scrum Master), CMMI",
+    "Certifications: CET-6, Software Designer, CSM (Certified Scrum Master), Futures Practitioner Qualification"
+  ]
+}

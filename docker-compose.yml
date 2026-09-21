@@ -1,5 +1,8 @@
 services:
   # Public side: recruiters/HR ask questions about the owner's background.
+  # Auth isolation: dedicated JWT secret + cookie name so an admin login can
+  # never be accepted here (and vice versa). Both containers share cookies by
+  # domain (Path=/), so the names MUST differ.
   public:
     build: ./app
     image: job-agent-app:latest
@@ -8,6 +11,8 @@ services:
     environment:
       SIDE: public
       PORT: 8000
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET_PUBLIC}
+      CHAINLIT_AUTH_COOKIE_NAME: public_access_token
     volumes:
       - ./data:/data
       - ./app/custom-public:/srv/public:ro
@@ -24,11 +29,27 @@ services:
     environment:
       SIDE: admin
       PORT: 8000
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET_ADMIN}
+      CHAINLIT_AUTH_COOKIE_NAME: admin_access_token
     volumes:
       - ./data:/data
       - ./app/custom-public:/srv/public:ro
       - ./app/public-static:/static
       - ./app/custom-public/index-patched.html:/usr/local/lib/python3.11/site-packages/chainlit/frontend/dist/index.html:ro
+    restart: unless-stopped
+
+  mcp:
+    image: job-agent-app:latest
+    container_name: jas-mcp
+    env_file: .env
+    environment:
+      SIDE: mcp
+      MCP_JWT_SECRET: ${MCP_JWT_SECRET}
+      PORT: 8000
+    volumes:
+      - ./data:/data
+      - ./app/public-static:/static
+      - ./app/custom-public:/srv/public
     restart: unless-stopped
 
   nginx:

@@ -25,10 +25,6 @@ body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(
   align-items:center;justify-content:space-between;padding:0 14px;
 }
 #topbar .name{font-weight:600;font-size:14px}
-#topbar .expand{
-  border:none;background:#eef2ff;color:var(--accent);border-radius:8px;
-  padding:7px 14px;font-size:13px;cursor:pointer;font-weight:600;
-}
 
 /* ================= mobile bottom input bar ================= */
 #inputbar{
@@ -50,7 +46,9 @@ body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(
 
 /* ---------- desktop split ---------- */
 @media (min-width:900px){
-  #topbar,#inputbar{display:none!important}
+  #inputbar{display:none!important}
+  #topbar{display:block!important;position:static;background:none!important;border:none!important;backdrop-filter:none!important;height:auto}
+  #topbar .name{display:none}
   .layout{display:flex;height:100vh;overflow:hidden}
   #resume-panel{width:50%;height:100vh;overflow-y:auto;border-right:1px solid var(--line)}
   .resume-inner{padding:40px 32px 60px}
@@ -94,6 +92,10 @@ header h1{font-size:28px}
 header .status{color:var(--sub);margin-top:4px;font-size:14.5px}
 .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .tag{background:#eef2ff;color:var(--accent);border-radius:999px;padding:3px 13px;font-size:12.5px}
+.proj-link{font-size:12px;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin-left:6px;white-space:nowrap;vertical-align:2px}
+.proj-link:hover{border-color:var(--accent);background:#eef2ff}
+body.dark .proj-link{background:#1e2a44;border-color:#2a3854}
+body.dark .proj-link:hover{background:#243354}
 .cta{margin-top:20px;display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;padding:11px 26px;border-radius:10px;font-size:15px;font-weight:600;box-shadow:0 4px 14px rgba(37,99,235,.22);cursor:pointer;border:none}
 section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-top:18px}
 h2{font-size:17px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
@@ -112,14 +114,42 @@ body.dark .cta,body.dark #inputbar button{box-shadow:0 4px 14px rgba(59,130,246,
 body.dark #chat-panel{background:#171e2e}
 @media print{.cta,#topbar,#inputbar,#chat-panel{display:none!important}section{border:none}}
 
-/* theme toggle */
-#theme-btn{
-  position:fixed;right:14px;bottom:74px;z-index:130;
-  width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--ink);font-size:19px;cursor:pointer;
-  box-shadow:0 4px 16px rgba(20,30,60,.14);
+/* theme toggle + language select — BOTH copies (topbar mobile + desktop header
+   row) must be styled identically; the -2 ids are the desktop-visible ones and
+   were previously unstyled (ragged heights). Shared height keeps the row even. */
+#theme-btn,#theme-btn2{
+  border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font-size:17px;line-height:1;cursor:pointer;border-radius:999px;
+  padding:0 10px;margin-right:8px;height:32px;
 }
-@media (min-width:900px){#theme-btn{bottom:auto;top:14px;right:calc(25% + 22px)}}
+#lang-btn,#lang-btn2{
+  border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font-size:13px;cursor:pointer;border-radius:999px;padding:0 10px;margin-right:8px;
+  height:32px;
+  /* fixed width so the row layout is identical for every language */
+  min-width:64px;text-align:center;text-align-last:center;
+}
+#pdf-btn,#pdf-btn2{
+  border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font-size:12.5px;cursor:pointer;border-radius:999px;padding:0 12px;margin-right:8px;font-weight:600;
+  height:32px;
+}
+#pdf-btn:hover,#pdf-btn2:hover{border-color:var(--accent);color:var(--accent)}
+/* desktop: topbar hidden (bar chrome + text children display:none); instead of
+   floating the 3 controls over the chat, place them inside the resume header row */
+@media (min-width:900px){
+  #lang-btn,#pdf-btn,#theme-btn{margin:0}
+}
+#resume-ctrls{display:none;gap:8px;align-items:center;margin-left:auto}
+@media (min-width:900px){
+  #resume-ctrls{display:flex}
+  /* the same buttons also live in topbar for mobile; on desktop hide the topbar
+     copies and show the header-row copies */
+  #topbar #lang-btn,#topbar #pdf-btn,#topbar #theme-btn{display:none!important}
+}
+.head-row{display:flex;align-items:center;gap:18px}
+#r-avatar{width:96px;height:96px;border-radius:50%;object-fit:cover;box-shadow:0 2px 10px rgba(20,30,60,.18);flex:none}
+@media (max-width:899px){#r-avatar{width:72px;height:72px}}
 
 </style>
 </head>
@@ -127,15 +157,28 @@ body.dark #chat-panel{background:#171e2e}
 
 <div id="topbar">
   <span class="name" id="bar-name">候选人简历</span>
-  <button class="expand" onclick="openChat()">💬 打开对话</button>
+  <span style="flex:1"></span>
+  <select id="lang-btn" onchange="setLang(this.value)" title="Language" style="display:none"></select>
+  <button id="pdf-btn" onclick="downloadPdf()" title="下载当前语言简历 PDF" style="display:none">⬇ 下载</button>
+  <button id="theme-btn" onclick="toggleTheme()" title="切换明暗">🌙</button>
 </div>
 
 <div class="layout">
   <div id="resume-panel">
     <div class="resume-inner wrap" id="resume-body">
       <header>
-        <h1 id="r-name"><span class="ph">&lt;姓名&gt;</span></h1>
-        <div class="status" id="r-status"><span class="ph">&lt;求职状态 · 期望职位 · 期望城市&gt;</span></div>
+        <div class="head-row">
+          <img id="r-avatar" alt="形象照" style="display:none" />
+          <div>
+            <h1 id="r-name"><span class="ph">&lt;姓名&gt;</span></h1>
+            <div class="status" id="r-status"><span class="ph">&lt;求职状态 · 期望职位 · 期望城市&gt;</span></div>
+          </div>
+          <div id="resume-ctrls">
+            <select id="lang-btn2" onchange="setLang(this.value)" title="Language" style="display:none"></select>
+            <button id="pdf-btn2" onclick="downloadPdf()" title="下载当前语言简历 PDF" style="display:none">⬇ 下载</button>
+            <button id="theme-btn2" onclick="toggleTheme()" title="切换明暗">🌙</button>
+          </div>
+        </div>
         <div class="tags" id="r-tags"></div>
       </header>
       <section>
@@ -164,10 +207,24 @@ body.dark #chat-panel{background:#171e2e}
       <button class="close" onclick="closeChat()">✕</button>
     </div>
     <iframe id="chat-frame" src="/chat/" title="候选人 Agent"></iframe>
+<script>
+/* Resume this browser's last conversation: look up the thread id (cookie-scoped),
+   then point the chainlit iframe at ?thread=<id> so it restores the history. */
+(function(){
+  fetch('/chat/api/latest', {credentials:'same-origin'})
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.threadId) {
+        const f = document.getElementById('chat-frame');
+        f.src = '/chat/?thread=' + encodeURIComponent(d.threadId);
+      }
+    })
+    .catch(() => {});
+})();
+</script>
   </div>
 </div>
 
-<button id="theme-btn" onclick="toggleTheme()" title="切换明暗">🌙</button>
 
 <div id="inputbar">
   <button onclick="openChat()">💬 想深入了解候选人？点击开始对话</button>
@@ -181,7 +238,7 @@ const THEME_KEY = 'vite-ui-theme';
 function iframeWin(){ try{return document.getElementById('chat-frame').contentWindow}catch(e){return null} }
 function applyTheme(dark, syncIframe){
   document.body.classList.toggle('dark', dark);
-  document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+  document.querySelectorAll('#theme-btn,#theme-btn2').forEach(b => b.textContent = dark ? '☀️' : '🌙');
   localStorage.setItem('jas-dark', dark ? '1' : '0');
   const w = iframeWin();
   if(syncIframe && w){
@@ -207,8 +264,40 @@ function toggleTheme(){
   const mine = localStorage.getItem('jas-dark');
   if(mine !== null){ applyTheme(mine === '1', false); }
 })();
+/* visitor session uuid: localStorage + cookie (iframe/chat reads it server-side) */
+(function(){
+  let vuid = localStorage.getItem('jas_vuid');
+  if(!vuid){
+    vuid = crypto.randomUUID ? crypto.randomUUID() : 'v' + Date.now() + Math.random().toString(36).slice(2);
+    localStorage.setItem('jas_vuid', vuid);
+  }
+  document.cookie = 'jas_vuid=' + vuid + '; path=/; max-age=' + 3600*24*365 + '; SameSite=Lax';
+  // load avatar (optional)
+  const av = document.getElementById('r-avatar');
+  const probe = new Image();
+  probe.onload = () => { av.src = 'avatar.jpg?v=' + Date.now(); av.style.display = 'block'; };
+  probe.onerror = () => { av.style.display = 'none'; };
+  probe.src = 'avatar.jpg?probe=' + Date.now();
+})();
 // if user toggles theme inside chainlit, resume follows on next iframe load
 document.getElementById('chat-frame').addEventListener('load', syncFromChainlit);
+
+/* Recruiter side runs in single-session mode: hide chainlit's sidebar (multi-session list)
+   and new-chat button INSIDE the iframe (same-origin). History is keyed to this browser's
+   jas_vuid uuid and resumes automatically. Admin side (/admin) is not affected. */
+document.getElementById('chat-frame').addEventListener('load', () => {
+  try {
+    const d = document.getElementById('chat-frame').contentWindow.document;
+    const st = d.createElement('style');
+    /* single-session mode: hide thread sidebar, new-chat, Readme, chainlit's own
+       theme toggle, user nav ("V"), and the whole left sidebar panel */
+    st.textContent = [
+      '#sidebar-trigger-button,#new-chat-button,#readme-button,#theme-toggle,#user-nav-button{display:none!important}',
+      '#thread-list,[data-testid*="sidebar"],aside[class*=sidebar]{display:none!important}'
+    ].join('');
+    d.head.appendChild(st);
+  } catch(e) {}
+});
 
 function openChat(){
   panel.classList.add('open');
@@ -223,28 +312,142 @@ function closeChat(){
 
 async function loadResume(){
   try{
-    const r = await fetch('/resume-data.json', {cache:'no-store'});
-    if(!r.ok) return;
+    const file = currentLang === 'zh' ? 'resume-data.json' : `resume-data.${currentLang}.json`;
+    const r = await fetch('/' + file, {cache:'no-store'});
+    if(!r.ok){
+      if(currentLang !== 'zh'){ setCurrentLang('zh'); return loadResume(); }
+      return;
+    }
     const d = await r.json();
     const set = (id, html) => { const el=document.getElementById(id); if(el&&html) el.innerHTML=html; };
+    // normalize: support both field schemas
+    //  old: {title, meta, points[]}            (written by update_resume_page)
+    //  new: {company/role, period, highlights[]} for experience;
+    //       {name, role, period, content[]} for projects; skills as {组: [..]} dict
+    const itemTitle = it => it.title || (it.company ? (it.role ? `${it.company} · ${it.role}` : it.company) : it.name) || '';
+    const itemMeta  = it => it.meta || it.period || '';
+    const itemPts   = it => it.points || it.highlights || it.content || [];
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     if(d.name) set('r-name', d.name);
     if(d.status) set('r-status', d.status);
     if(d.tags) document.getElementById('r-tags').innerHTML =
-      d.tags.map(t=>`<span class="tag">${t}</span>`).join('');
+      d.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('');
     if(d.summary) set('r-summary', d.summary);
-    if(d.experience) set('r-experience', d.experience.map(e=>
-      `<div class="item"><h3>${e.title}</h3><div class="meta">${e.meta||''}</div>${e.points?`<ul>${e.points.map(p=>`<li>${p}</li>`).join('')}</ul>`:''}</div>`
-    ).join(''));
-    if(d.projects) set('r-projects', d.projects.map(p=>
-      `<div class="item"><h3>${p.title}</h3><div class="meta">${p.meta||''}</div>${p.points?`<ul>${p.points.map(x=>`<li>${x}</li>`).join('')}</ul>`:''}</div>`
-    ).join(''));
-    if(d.skills) set('r-skills', d.skills.map(s=>`<div class="item">${s}</div>`).join(''));
+    if(d.experience) set('r-experience', d.experience.map(e=>{
+      const pts = itemPts(e);
+      return `<div class="item"><h3>${esc(itemTitle(e))}</h3><div class="meta">${esc(itemMeta(e))}</div>${pts.length?`<ul>${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:''}</div>`;
+    }).join(''));
+    if(d.projects) set('r-projects', d.projects.map(p=>{
+      const pts = itemPts(p);
+      // optional per-project link (only set when a publicly reachable URL exists)
+      const link = p.link ? ` <a class="proj-link" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">${(UI[currentLang]||UI.zh).projLink} ↗</a>` : '';
+      return `<div class="item"><h3>${esc(itemTitle(p))}${link}</h3><div class="meta">${esc(itemMeta(p))}</div>${pts.length?`<ul>${pts.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`;
+    }).join(''));
+    if(d.skills){
+      let items;
+      if(Array.isArray(d.skills)) items = d.skills.map(s=>`<div class="item">${esc(s)}</div>`).join('');
+      else items = Object.entries(d.skills).map(([g,list]) =>
+        `<div class="item"><b>${esc(g)}</b>：${(list||[]).map(esc).join('、')}</div>`).join('');
+      set('r-skills', items);
+    }
     if(d.name){
-      document.getElementById('bar-name').textContent = d.name + ' · 简历';
-      document.title = d.name + ' · 简历';
+      document.getElementById('bar-name').textContent = d.name + ' · ' + (UI[currentLang]||UI.zh).docTitle;
+      document.title = d.name + ' · ' + (UI[currentLang]||UI.zh).docTitle;
+      document.getElementById('pdf-btn').style.display = ''; // resume published → PDF available
+      document.getElementById('pdf-btn2').style.display = '';
     }
   }catch(e){}
 }
+
+/* ---------- i18n static labels ---------- */
+const UI = {
+  zh: {resume:'候选人简历', deep:'💬 想深入了解候选人？点击开始对话',
+       intro:'个人简介', exp:'工作经历', proj:'项目经验', skills:'技能',
+       agent:'候选人 Agent', note:'本页由候选人授权展示 · 深入问题请与 Agent 对话 · © 2026',
+       download:'⬇ 下载', pdfTip:'下载当前语言简历 PDF', projLink:'访问',
+       docTitle:'简历', ph:{status:'<求职状态 · 期望职位 · 期望城市>', summary:'<简历上传后自动展示>',
+       expItem:'<公司 · 职位>', projItem:'<项目名称>', skillItem:'<技能标签上传后自动生成>'}},
+  en: {resume:'Candidate Resume', deep:'💬 Want to know the candidate? Start a chat',
+       intro:'Summary', exp:'Experience', proj:'Projects', skills:'Skills',
+       agent:'Candidate Agent', note:'Published with candidate consent · Ask the Agent for details · © 2026',
+       download:'⬇ Download', pdfTip:'Download resume PDF (current language)', projLink:'Visit',
+       docTitle:'Resume', ph:{status:'<status · target role · city>', summary:'<auto-shown after upload>',
+       expItem:'<company · role>', projItem:'<project name>', skillItem:'<auto-generated after upload>'}},
+};
+function applyLabels(){
+  const t = UI[currentLang] || UI.zh;
+  document.getElementById('bar-name').textContent = t.resume;
+  // download button label + tooltip follow UI language; both copies stay in sync
+  document.querySelectorAll('#pdf-btn,#pdf-btn2').forEach(b => {
+    b.textContent = t.download;
+    b.title = t.pdfTip;
+  });
+  document.querySelectorAll('#theme-btn,#theme-btn2').forEach(b => {
+    b.title = currentLang === 'en' ? 'Toggle light/dark theme' : '切换明暗';
+  });
+  document.querySelector('#inputbar button').textContent = t.deep;
+  document.querySelector('#chat-panel .sheet-head .t').textContent = t.agent;
+  document.querySelector('.note').textContent = t.note;
+  const h2s = document.querySelectorAll('section h2');
+  if(h2s.length >= 4){ h2s[0].textContent=t.intro; h2s[1].textContent=t.exp; h2s[2].textContent=t.proj; h2s[3].textContent=t.skills; }
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : currentLang;
+}
+
+/* ---------- multi-language resume switching ---------- */
+let langs = [{code:'zh', label:'中文'}];
+// short fixed-width labels per language code — keeps the select compact and
+// identical in width across all UI languages
+const LANG_LABELS = {zh:'中文', en:'Eng', ja:'日', ko:'한', fr:'Fr', de:'De', es:'Es', ru:'Ru'};
+let currentLang = localStorage.getItem('jas_lang') || null;
+
+function detectBrowserLang(){
+  const cands = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'zh-CN']);
+  for(const c of cands){
+    const code = (c||'').toLowerCase().split('-')[0];
+    if(langs.some(l => l.code === code)) return code;
+  }
+  return 'zh';
+}
+function buildLangSelect(){
+  for(const sid of ['lang-btn','lang-btn2']){
+    const sel = document.getElementById(sid);
+    if(!sel) continue;
+    sel.innerHTML = langs.map(l => `<option value="${l.code}">${LANG_LABELS[l.code] || l.label}</option>`).join('');
+    sel.value = currentLang;
+    sel.style.display = langs.length > 1 ? '' : 'none';
+  }
+}
+function setCurrentLang(code){
+  currentLang = code;
+  localStorage.setItem('jas_lang', code);
+  document.cookie = 'jas_lang=' + code + '; path=/; max-age=' + 3600*24*365 + '; SameSite=Lax';
+}
+function setLang(code){
+  if(code === currentLang) return;
+  setCurrentLang(code);
+  applyLabels();
+  loadResume();
+  // keep both selects in sync
+  document.querySelectorAll('#lang-btn,#lang-btn2').forEach(s => s.value = code);
+  // restart chat iframe in the new language (picks up jas_lang cookie at handshake)
+  const f = document.getElementById('chat-frame');
+  const m = f.src.match(/^([^?]*)/);
+  f.src = m[1];
+}
+function downloadPdf(){
+  window.open('/resume-pdf?lang=' + currentLang, '_blank');
+}
+(async function initLangs(){
+  try{
+    const r = await fetch('/resume-langs.json', {cache:'no-store'});
+    const d = await r.json();
+    if(d && Array.isArray(d.langs) && d.langs.length) langs = d.langs;
+  }catch(e){}
+  if(!currentLang || !langs.some(l => l.code === currentLang)) currentLang = detectBrowserLang();
+  setCurrentLang(currentLang);
+  buildLangSelect();
+  applyLabels();
+})();
 loadResume();
 </script>
 </body>
