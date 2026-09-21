@@ -175,5 +175,25 @@
     "AI Engineering: LLM deployment in financial scenarios, Dify, LangChain, Agent, VS Code extension development, Vibe Coding",
     "Management & Credentials: R&D team management (20 people), technical hiring and pipeline building, R&D standards and code review mechanisms, CSM (Certified Scrum Master), CMMI",
     "Certifications: CET-6, Software Designer, CSM (Certified Scrum Master), Futures Practitioner Qualification"
+  ],
+  "education": [
+    {
+      "school": "Shanghai Jiao Tong University",
+      "degree": "M.S.",
+      "field": "Accounting",
+      "period": "2010 - 2013"
+    },
+    {
+      "school": "Shanghai Jiao Tong University",
+      "degree": "B.S.",
+      "field": "Finance",
+      "period": "2002 - 2005"
+    },
+    {
+      "school": "Shanghai Jiao Tong University",
+      "degree": "B.S.",
+      "field": "Computer Science (Pilot Class)",
+      "period": "2001 - 2005"
+    }
   ]
 }

@@ -269,7 +269,7 @@ def write_resume_page(data: dict, lang: str = "zh") -> str:
     for k in required:
         if not data.get(k):
             return f"error: field '{k}' is required"
-    allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills"]
+    allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills", "education"]
     clean = {k: data[k] for k in allowed if k in data and data[k] not in (None, "", [])}
     dest = _resume_page_path(lang)
     try:

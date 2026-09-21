@@ -229,10 +229,13 @@ def update_resume_page(
     experience_json: str = "",
     projects_json: str = "",
     skills_json: str = "",
+    education_json: str = "",
 ) -> str:
     """Publish the public landing resume page in the given language (zh default, en, ja...).
-    Translate ALL fields into `lang`. tags: comma-separated; experience_json/projects_json:
-    JSON arrays of {title, meta, points:[...]}; projects items may include an optional
+    Translate ALL fields into `lang`. tags: comma-separated; experience_json/projects_json/
+    education_json: JSON arrays of {title, meta, points:[...]}; education items use
+    {school, degree, field, period, details?[]} (details only shown when the reader
+    expands the entry); projects items may include an optional
     "link": "https://..." field (shown as a Visit badge on the landing page and a clickable
     URL in the PDF — only add when the URL is publicly reachable); skills_json: JSON array of strings."""
     import json
@@ -243,7 +246,8 @@ def update_resume_page(
         data["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
     if summary:
         data["summary"] = summary
-    for key, arg in (("experience", experience_json), ("projects", projects_json), ("skills", skills_json)):
+    for key, arg in (("experience", experience_json), ("projects", projects_json),
+                     ("skills", skills_json), ("education", education_json)):
         if arg:
             try:
                 data[key] = json.loads(arg)

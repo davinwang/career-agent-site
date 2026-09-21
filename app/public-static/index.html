@@ -205,6 +205,10 @@ body.dark #chat-panel{background:#171e2e}
         <h2>工作经历</h2>
         <div id="r-experience"><div class="item"><h3 class="ph">&lt;公司 · 职位&gt;</h3><div class="meta ph">&lt;时间段&gt;</div></div></div>
       </section>
+      <section id="edu-section" style="display:none">
+        <h2>教育经历</h2>
+        <div id="r-education"></div>
+      </section>
       <section>
         <h2>项目经验</h2>
         <div id="r-projects"><div class="item"><h3 class="ph">&lt;项目名称&gt;</h3><div class="meta ph">&lt;技术栈&gt;</div><ul><li class="ph">&lt;项目亮点（详情可问 Agent）&gt;</li></ul></div></div>
@@ -365,6 +369,24 @@ async function loadResume(){
         + (pts.length?`<ul class="exp-body">${pts.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:'')
         + `</div>`;
     }).join(''));
+    if(d.education && d.education.length){
+      document.getElementById('edu-section').style.display = '';
+      set('r-education', d.education.map(e=>{
+        // education rows: always collapsed. Head shows logo + school · degree ·
+        // field + period; coursework/GPA/activities (details[]) hidden until expanded.
+        const school = e.school || itemTitle(e);
+        const deg = e.degree ? ` · ${e.degree}` : '';
+        const fld = e.field || '';
+        const logo = e.logo
+          ? `<span class="exp-logo"><img src="${esc(e.logo)}" alt="" onerror="this.parentNode.textContent='${esc(school).slice(0,1)}'"></span>`
+          : `<span class="exp-logo">${esc(school).slice(0,1)}</span>`;
+        const det = itemPts(e);
+        return `<div class="exp item" onclick="toggleExp(this)">`
+          + `<div class="exp-head">${logo}<div class="exp-main"><div class="exp-title">${esc(school)}${esc(deg)}</div><div class="exp-period">${esc(fld)}${fld&&itemMeta(e)?' · ':''}${esc(itemMeta(e))}</div></div><span class="exp-chev">▶</span></div>`
+          + (det.length?`<ul class="exp-body">${det.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'')
+          + `</div>`;
+      }).join(''));
+    }
     if(d.projects) set('r-projects', d.projects.map(p=>{
       const pts = itemPts(p);
       // optional per-project link (only set when a publicly reachable URL exists)
@@ -390,13 +412,13 @@ async function loadResume(){
 /* ---------- i18n static labels ---------- */
 const UI = {
   zh: {resume:'候选人简历', deep:'💬 想深入了解候选人？点击开始对话',
-       intro:'个人简介', exp:'工作经历', proj:'项目经验', skills:'技能',
+       intro:'个人简介', exp:'工作经历', proj:'项目经验', skills:'技能', edu:'教育经历',
        agent:'候选人 Agent', note:'本页由候选人授权展示 · 深入问题请与 Agent 对话 · © 2026',
        download:'⬇ 下载', pdfTip:'下载当前语言简历 PDF', projLink:'访问',
        docTitle:'简历', ph:{status:'<求职状态 · 期望职位 · 期望城市>', summary:'<简历上传后自动展示>',
        expItem:'<公司 · 职位>', projItem:'<项目名称>', skillItem:'<技能标签上传后自动生成>'}},
   en: {resume:'Candidate Resume', deep:'💬 Want to know the candidate? Start a chat',
-       intro:'Summary', exp:'Experience', proj:'Projects', skills:'Skills',
+       intro:'Summary', exp:'Experience', proj:'Projects', skills:'Skills', edu:'Education',
        agent:'Candidate Agent', note:'Published with candidate consent · Ask the Agent for details · © 2026',
        download:'⬇ Download', pdfTip:'Download resume PDF (current language)', projLink:'Visit',
        docTitle:'Resume', ph:{status:'<status · target role · city>', summary:'<auto-shown after upload>',
@@ -416,8 +438,14 @@ function applyLabels(){
   document.querySelector('#inputbar button').textContent = t.deep;
   document.querySelector('#chat-panel .sheet-head .t').textContent = t.agent;
   document.querySelector('.note').textContent = t.note;
-  const h2s = document.querySelectorAll('section h2');
-  if(h2s.length >= 4){ h2s[0].textContent=t.intro; h2s[1].textContent=t.exp; h2s[2].textContent=t.proj; h2s[3].textContent=t.skills; }
+  // map section h2 by the container it holds (index-based assignment breaks
+  // when new sections are inserted)
+  const h2Of = divId => document.getElementById(divId)?.closest('section')?.querySelector('h2');
+  const pairs = [['r-summary', t.intro], ['r-experience', t.exp],
+                 ['r-education', t.edu], ['r-projects', t.proj], ['r-skills', t.skills]];
+  for (const [id, label] of pairs){
+    const h2 = h2Of(id); if (h2 && label) h2.textContent = label;
+  }
   document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : currentLang;
 }
 

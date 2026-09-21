@@ -72,8 +72,8 @@ def _ensure_fonts() -> tuple[str, str]:
 
 # section headings per language
 _HEADINGS = {
-    "zh": {"summary": "个人简介", "experience": "工作经历", "projects": "项目经验", "skills": "技能"},
-    "en": {"summary": "Summary", "experience": "Experience", "projects": "Projects", "skills": "Skills"},
+    "zh": {"summary": "个人简介", "experience": "工作经历", "projects": "项目经验", "skills": "技能", "education": "教育经历"},
+    "en": {"summary": "Summary", "experience": "Experience", "projects": "Projects", "skills": "Skills", "education": "Education"},
 }
 _FALLBACK = _HEADINGS["en"]
 
@@ -177,6 +177,22 @@ def generate(lang: str = "zh") -> tuple[bytes | None, str]:
                     f'<a href="{_esc(link)}" color="#2563eb">{_esc(link)} ↗</a>', s_li))
             for pt in points:
                 story.append(Paragraph(_esc(pt), s_li, bulletText="•"))
+            story.append(Spacer(1, 5))
+
+    if data.get("education"):
+        _section(h.get("education", "Education"))
+        for e in data["education"]:
+            school = e.get("school") or e.get("title") or ""
+            deg = e.get("degree") or ""
+            fld = e.get("field") or ""
+            meta = e.get("period") or e.get("meta") or ""
+            head = school + (f" · {deg}" if deg else "")
+            subline = " · ".join(x for x in (fld, meta) if x)
+            story.append(Paragraph(_esc(head), s_h3))
+            if subline:
+                story.append(Paragraph(_esc(subline), s_meta))
+            for dt in (e.get("details") or e.get("points") or []):
+                story.append(Paragraph(_esc(dt), s_li, bulletText="•"))
             story.append(Spacer(1, 5))
 
     if data.get("skills"):
