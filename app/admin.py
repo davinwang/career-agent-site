@@ -214,7 +214,23 @@ async def main(message: cl.Message):
             "role": "system",
             "content": f"用户上传了形象照 {avatar_upload['name']}。base64 如下。\n{avatar_upload['note']}\n\nBASE64:\n{avatar_upload['b64']}",
         }]
-    result = await _run_streamed(ag, run_input, msg)
+    # DeepSeek occasionally returns an empty/invalid completion mid-run, which
+    # the SDK surfaces as ModelBehaviorError('Model did not produce a final
+    # response!'). Retry once before giving up — transient, not fatal.
+    from agents.exceptions import ModelBehaviorError
+    result = None
+    for attempt in (1, 2):
+        try:
+            result = await _run_streamed(ag, run_input, msg)
+            break
+        except ModelBehaviorError:
+            if attempt == 2:
+                await msg.update(content="⚠️ 模型本次返回异常（连续两次空响应），请重发一次消息重试。")
+                history.append({"role": "assistant", "content": "(模型异常，未回复)"})
+                cl.user_session.set("history", history)
+                return
+            history.append({"role": "assistant", "content": "(上一次模型返回为空，已自动重试)"})
+            run_input = list(history)
     # If the run hit the turn limit, the SDK raises no error but yields a
     # turn-limited result with empty final_output — surface it honestly
     # instead of "(no answer)".
