@@ -1,7 +1,7 @@
 """Agent tools. Read tools = both sides; write tools = admin only."""
 import os
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from agents import function_tool
 
 from . import kb, memory, repos, starters
@@ -60,15 +60,27 @@ def get_resume_page(lang: str = "zh") -> str:
 
 
 class ExperienceItem(BaseModel):
-    title: str = Field("", description="公司 · 职位")
-    meta: str = Field("", description="时间段")
-    points: list[str] = Field(default_factory=list, description="亮点列表")
+    model_config = ConfigDict(extra="allow")  # passthrough logo/company/role/... — schema-drift-proof
+    title: str = Field("", description="公司 · 职位（或用 company+role 字段）")
+    meta: str = Field("", description="时间段（或用 period 字段）")
+    points: list[str] = Field(default_factory=list, description="亮点列表（或用 highlights 字段）")
+
+
+class EducationItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    school: str = Field("", description="学校")
+    degree: str = Field("", description="学位")
+    field: str = Field("", description="专业")
+    period: str = Field("", description="时间段")
+    details: list[str] = Field(default_factory=list, description="展开后显示的细节")
 
 
 class ProjectItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
     title: str = Field("", description="项目名称")
     meta: str = Field("", description="技术栈")
     points: list[str] = Field(default_factory=list, description="亮点列表")
+    logo: str = Field("", description="图标路径（如 /vendor/logos/x.ico），通常由系统保留，无需提供")
     demo_link: str = Field("", description="项目展示链接（在线演示/官网）。为空则不显示")
     repo_link: str = Field("", description="源代码链接——仅当项目开源时提供；闭源项目必须留空")
     attachment_link: str = Field("", description="附件链接（文档/报告/截图等），可为空")
@@ -77,11 +89,13 @@ class ProjectItem(BaseModel):
 
 class ResumePage(BaseModel):
     """Public landing resume page content."""
+    model_config = ConfigDict(extra="allow")
     name: str = Field("", description="候选人姓名")
     status: str = Field("", description="一句话状态，如: 在职看机会 · 期望后端/全栈 · 上海")
     tags: list[str] = Field(default_factory=list, description="技能标签")
     summary: str = Field("", description="个人简介段落(纯文本)")
     experience: list[ExperienceItem] = Field(default_factory=list, description="工作经历")
+    education: list[EducationItem] = Field(default_factory=list, description="教育经历（独立于工作经历！）")
     projects: list[ProjectItem] = Field(default_factory=list, description="项目经验")
     skills: list[str] = Field(default_factory=list, description="技能描述行")
 
@@ -93,11 +107,13 @@ def update_resume_page(page: ResumePage, lang: str = "zh") -> str:
     lang: language code, e.g. 'zh' (default), 'en', 'ja'... Each language is stored
     separately; publishing a new language makes it selectable on the site.
     Translate ALL fields fully into the target language (keep company/product names).
-    MERGE semantics: only fields you provide are updated; omitted sections KEEP their
-    current content. If you include a section (experience/education/projects), you MUST
-    include ALL its items - a write that would shrink a section is rejected.
-    To add a single item: read_resume_page first, then return every existing item plus
-    the new one. Set _force=true ONLY to deliberately delete items (rare).
+
+    PER-ITEM MERGE: for experience/education/projects, items are matched by identity
+    (company/title, school+degree+field, title) and merged field-by-field. Items you
+    do NOT mention are KEPT — updating one entry cannot wipe the others. Existing
+    logos are preserved automatically. A section can therefore contain ANY subset.
+    Never put education rows inside experience.
+    To deliberately delete items, say so in your reply and retry with _force=true.
     """
     d = page.model_dump(exclude_none=True)
     # open/closed-source consistency: repo link only for open-source projects

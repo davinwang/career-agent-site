@@ -231,13 +231,20 @@ def update_resume_page(
     skills_json: str = "",
     education_json: str = "",
 ) -> str:
-    """Publish the public landing resume page in the given language (zh default, en, ja...).
-    Translate ALL fields into `lang`. tags: comma-separated; experience_json/projects_json/
-    education_json: JSON arrays of {title, meta, points:[...]}; education items use
-    {school, degree, field, period, details?[]} (details only shown when the reader
-    expands the entry); projects items may include an optional
-    "link": "https://..." field (shown as a Visit badge on the landing page and a clickable
-    URL in the PDF — only add when the URL is publicly reachable); skills_json: JSON array of strings."""
+    """Publish/update the public landing resume page in the given language (zh default, en, ja...).
+
+    PER-ITEM MERGE: items are matched by identity (company/title for experience,
+    school+degree+field for education, title for projects) and merged field-by-field;
+    items you don't mention are KEPT — you can safely update a single entry.
+    Never mix education into experience_json: work experience and education are
+    separate sections. To replace/delete an item, use _force semantics via the
+    direct tool or state clearly in your reply what should be removed.
+    Translate ALL fields into `lang`. tags: comma-separated.
+    experience_json: JSON array of {company, role, period, highlights:[...]} (or {title, meta, points}).
+    education_json: JSON array of {school, degree, field, period, details?[]}.
+    projects_json: JSON array of {title/name, meta, points/highlights, demo_link?, repo_link? (ONLY if
+    open-source), attachment_link?, open_source:bool, logo? (usually preserved automatically)}.
+    skills_json: JSON array of strings."""
     import json
     data = {"name": name}
     if status:
@@ -253,6 +260,17 @@ def update_resume_page(
                 data[key] = json.loads(arg)
             except json.JSONDecodeError as e:
                 return f"error: {key}_json invalid: {e}"
+    # education rows mistakenly placed in experience (recurring bug): move them
+    if data.get("experience"):
+        school_kw = ("university", "大学", "学院", "institute")
+        moved = [e for e in data["experience"]
+                 if any(k in str(e.get("company") or e.get("title") or "").lower() for k in school_kw)]
+        if moved:
+            data["experience"] = [e for e in data["experience"] if e not in moved]
+            data.setdefault("education", [])
+            for m in moved:
+                m.setdefault("school", m.pop("company", m.pop("title", "")))
+                data["education"].append(m)
     r = kb.write_resume_page(data, lang)
     if not r.startswith("error"):
         r += " | langs: " + kb.write_lang_manifest()

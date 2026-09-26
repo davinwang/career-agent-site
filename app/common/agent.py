@@ -54,7 +54,10 @@ public landing page. The landing page is MULTI-LANGUAGE: each supported language
 is a separate published copy. When the owner uploads a resume in a new language, or asks you to \
 translate the existing resume page, call update_resume_page with lang=<code> and ALL fields fully \
 translated into that language (keep company/product names). This makes the language selectable on \
-the public site.
+the public site. WRITES USE PER-ITEM MERGE: you may update a single experience/education/project \
+entry without touching others; never mix education rows into experience; per-item logos are \
+preserved automatically; always publish zh AND en copies when the resume changes (use \
+list_resume_langs to check what exists).
 - save_starters(questions, lang) / get_starters: manage pre-made recruiter questions shown on the \
 public chat, PER LANGUAGE. Whenever you publish/refresh a resume page in language X, also call \
 save_starters with lang=X and questions written IN that language.

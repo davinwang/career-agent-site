@@ -265,6 +265,55 @@ def write_lang_manifest() -> str:
 
 RESUME_BACKUP_KEEP = 20
 
+# Identity keys used to match an incoming list item to an existing one for
+# per-item merge. First match wins; unmatched items are appended as new.
+_SECTION_ID_KEYS = {
+    "experience": (("company", "title"), ("role",)),
+    "education": (("school",), ("degree", "field")),
+    "projects": (("name", "title"),),
+}
+
+
+def _item_identity(section: str, item: dict) -> tuple:
+    """Best-effort stable identity of a list item (normalized)."""
+    if not isinstance(item, dict):
+        return ("", str(item))
+    for keys in _SECTION_ID_KEYS.get(section, (("title",),)):
+        vals = [str(item.get(k) or "").strip() for k in keys]
+        if any(vals):
+            return (section,) + tuple(v.lower() for v in vals if v)
+    return (section, str(item).lower()[:40])
+
+
+def _merge_section(cur: list, inc: list, section: str) -> list:
+    """Field-level merge of list sections.
+
+    - Match incoming items to current ones by identity key; merge field-by-field
+      (incoming non-empty values win, e.g. new period/points).
+    - Unmatched incoming items are appended (they are NEW entries).
+    - Current items not mentioned are KEPT (this is the anti-wipe guarantee:
+      a partial agent write can no longer drop siblings).
+    """
+    out = [dict(i) if isinstance(i, dict) else i for i in (cur or [])]
+    for inc_item in (inc or []):
+        if not isinstance(inc_item, dict):
+            if inc_item not in out:
+                out.append(inc_item)
+            continue
+        iid = _item_identity(section, inc_item)
+        target = None
+        for cand in out:
+            if isinstance(cand, dict) and _item_identity(section, cand) == iid:
+                target = cand
+                break
+        if target is None:
+            out.append(dict(inc_item))
+        else:
+            for k, v in inc_item.items():
+                if v not in (None, "", []):
+                    target[k] = v
+    return out
+
 
 def _backup_resume_page(dest: str) -> str:
     """Timestamped backup of the current file before overwrite. Returns backup path or ''."""
@@ -290,24 +339,25 @@ def _backup_resume_page(dest: str) -> str:
 def write_resume_page(data: dict, lang: str = "zh") -> str:
     """Write resume-data[.lang].json consumed by the nginx-served landing page.
 
-    Safety hardening (after a 2026-09-26 incident where an interrupted admin
-    session wiped experience/education/projects):
-    - MERGE semantics: only keys present (non-empty) in `data` overwrite the
-      existing file; omitted sections keep their current content. A full-file
-      replacement therefore can no longer silently drop sections.
-    - Section-count guard: if a provided section would shrink to fewer items
-      than currently live (e.g. 6 experiences -> 0), the write is REJECTED
-      unless data["_force"] is explicitly true. This catches partial model
-      extraction before it destroys data.
-    - Timestamped backups: every successful write first copies the previous
-      file to <static>/backups/ (last 20 kept).
+    Safety model (after repeated 2026-09 incidents of lost education/logos/sections):
+
+    1. PER-ITEM MERGE for list sections (experience/education/projects):
+       incoming items are matched to existing ones by identity key (company/title/
+       school/name) and merged field-by-field. Items the caller does not mention
+       are KEPT. A partial write (e.g. model sends only one experience) therefore
+       updates that one entry instead of wiping the others.
+    2. Shrink guard: if the merged result would still end up with FEWER items in
+       a section than currently live (only possible via explicit conflicting
+       identities), the write is rejected unless data["_force"] is true.
+    3. Protected fields: 'logo' and other per-item fields the caller omits are
+       preserved from the live file (this is what repeatedly lost company logos).
+    4. Timestamped backups of the previous file (last 20) under <static>/backups/.
     """
     required = ["name"]
     for k in required:
         if not data.get(k):
             return f"error: field '{k}' is required"
     allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills", "education"]
-    # per-project link granularity lives inside project dicts; no top-level change needed
     dest = _resume_page_path(lang)
 
     # start from the current live content (merge base)
@@ -322,15 +372,18 @@ def write_resume_page(data: dict, lang: str = "zh") -> str:
     force = bool(data.get("_force"))
     incoming = {k: data[k] for k in allowed if k in data and data[k] not in (None, "", [])}
 
-    # section-shrink guard
+    merged_report = []
     for section in ("experience", "education", "projects"):
-        if section in incoming and not force:
-            have = len(clean.get(section) or [])
-            want = len(incoming[section])
-            if want < have:
-                return (f"error: refusing to shrink '{section}' from {have} to {want} item(s). "
+        if section in incoming:
+            cur = clean.get(section) or []
+            inc = incoming[section]
+            merged = _merge_section(cur, inc, section)
+            if not force and len(merged) < len(cur):
+                return (f"error: refusing to shrink '{section}' from {len(cur)} to {len(merged)} item(s). "
                         f"If this is intentional, retry with _force=true. "
                         f"Current content is preserved; nothing was written.")
+            incoming[section] = merged
+            merged_report.append(f"{section}:{len(cur)}+{len(inc)}->{len(merged)}")
     clean.update(incoming)
 
     try:
@@ -343,8 +396,22 @@ def write_resume_page(data: dict, lang: str = "zh") -> str:
         os.replace(tmp, dest)
     except OSError as e:
         return f"error writing resume page: {e}"
-    return (f"resume page [{normalize_lang(lang)}] updated "
-            f"({len(json.dumps(clean))} bytes): {', '.join(clean.keys())}")
+    extra = (" | " + " ".join(merged_report)) if merged_report else ""
+    msg = (f"resume page [{normalize_lang(lang)}] updated "
+           f"({len(json.dumps(clean))} bytes): {', '.join(clean.keys())}{extra}")
+    # cross-language consistency warning (recurring drift bug): section counts
+    try:
+        base = os.path.join(os.environ.get("RESUME_STATIC_DIR", "/static"), RESUME_DATA_NAME)
+        if os.path.abspath(dest) != os.path.abspath(base) and os.path.exists(base):
+            with open(base, "r", encoding="utf-8") as f:
+                zh = json.load(f)
+            for sec in ("experience", "education", "projects"):
+                a, b = len(zh.get(sec) or []), len(clean.get(sec) or [])
+                if a != b:
+                    msg += f" | ⚠️ {sec} count zh={a} vs {normalize_lang(lang)}={b} — 请核对两语言是否对齐"
+    except (OSError, ValueError):
+        pass
+    return msg
 
 
 def read_resume_page(lang: str = "zh") -> str:
