@@ -169,6 +169,17 @@
       "link": "http://49.235.163.102:30082/market"
     },
     {
+      "title": "All-Variety Futures Research Data Agent (gtjaqh-data-agent) · Independent Delivery",
+      "meta": "2026.09 · Personal project",
+      "points": [
+        "812-file all-variety research knowledge base (chain / framework / indicators / history / state)",
+        "MCP tool protocol + problem router selects data tools and knowledge paths by question type",
+        "Template- and checklist-driven output for consistent, source-traceable research content"
+      ],
+      "highlights": [],
+      "link": "https://github.com/davinwang/gtjaqh-data-agent"
+    },
+    {
       "title": "Guotai Junan Futures Investment Management Project · Backend Development",
       "meta": "Calmar/Sharpe/IR/Sortino metrics · Multi-process & multi-threaded · Vectorized computing · 2023.11 – 2025.06",
       "points": [

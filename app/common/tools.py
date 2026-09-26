@@ -89,8 +89,11 @@ def update_resume_page(page: ResumePage, lang: str = "zh") -> str:
     lang: language code, e.g. 'zh' (default), 'en', 'ja'... Each language is stored
     separately; publishing a new language makes it selectable on the site.
     Translate ALL fields fully into the target language (keep company/product names).
-    Fill in every field you know from the resume; unknown fields stay as placeholders.
-    Provide ALL known fields to do a full refresh.
+    MERGE semantics: only fields you provide are updated; omitted sections KEEP their
+    current content. If you include a section (experience/education/projects), you MUST
+    include ALL its items - a write that would shrink a section is rejected.
+    To add a single item: read_resume_page first, then return every existing item plus
+    the new one. Set _force=true ONLY to deliberately delete items (rare).
     """
     d = page.model_dump(exclude_none=True)
     cleaned = {k: v for k, v in d.items() if v not in ("", [], None)}

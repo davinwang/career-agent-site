@@ -263,17 +263,79 @@ def write_lang_manifest() -> str:
         return f"error writing lang manifest: {e}"
 
 
+RESUME_BACKUP_KEEP = 20
+
+
+def _backup_resume_page(dest: str) -> str:
+    """Timestamped backup of the current file before overwrite. Returns backup path or ''."""
+    import shutil
+    try:
+        base = os.path.join(os.path.dirname(dest), "backups")
+        os.makedirs(base, exist_ok=True)
+        stem = os.path.basename(dest).replace(".json", "")
+        b = os.path.join(base, f"{stem}.{__import__('datetime').datetime.now().strftime('%Y%m%d-%H%M%S')}.json")
+        shutil.copy2(dest, b)
+        # prune old backups (keep newest N)
+        siblings = sorted(f for f in os.listdir(base) if f.startswith(stem + "."))
+        for f in siblings[:-RESUME_BACKUP_KEEP]:
+            try:
+                os.remove(os.path.join(base, f))
+            except OSError:
+                pass
+        return b
+    except OSError:
+        return ""
+
+
 def write_resume_page(data: dict, lang: str = "zh") -> str:
-    """Write resume-data[.lang].json consumed by the nginx-served landing page."""
+    """Write resume-data[.lang].json consumed by the nginx-served landing page.
+
+    Safety hardening (after a 2026-09-26 incident where an interrupted admin
+    session wiped experience/education/projects):
+    - MERGE semantics: only keys present (non-empty) in `data` overwrite the
+      existing file; omitted sections keep their current content. A full-file
+      replacement therefore can no longer silently drop sections.
+    - Section-count guard: if a provided section would shrink to fewer items
+      than currently live (e.g. 6 experiences -> 0), the write is REJECTED
+      unless data["_force"] is explicitly true. This catches partial model
+      extraction before it destroys data.
+    - Timestamped backups: every successful write first copies the previous
+      file to <static>/backups/ (last 20 kept).
+    """
     required = ["name"]
     for k in required:
         if not data.get(k):
             return f"error: field '{k}' is required"
     allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills", "education"]
-    clean = {k: data[k] for k in allowed if k in data and data[k] not in (None, "", [])}
     dest = _resume_page_path(lang)
+
+    # start from the current live content (merge base)
+    clean: dict = {}
+    if os.path.exists(dest):
+        try:
+            with open(dest, "r", encoding="utf-8") as f:
+                clean = json.load(f)
+        except (OSError, ValueError):
+            clean = {}
+
+    force = bool(data.get("_force"))
+    incoming = {k: data[k] for k in allowed if k in data and data[k] not in (None, "", [])}
+
+    # section-shrink guard
+    for section in ("experience", "education", "projects"):
+        if section in incoming and not force:
+            have = len(clean.get(section) or [])
+            want = len(incoming[section])
+            if want < have:
+                return (f"error: refusing to shrink '{section}' from {have} to {want} item(s). "
+                        f"If this is intentional, retry with _force=true. "
+                        f"Current content is preserved; nothing was written.")
+    clean.update(incoming)
+
     try:
         os.makedirs(os.path.dirname(dest), exist_ok=True)
+        if os.path.exists(dest):
+            _backup_resume_page(dest)
         tmp = dest + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(clean, f, ensure_ascii=False, indent=2)
