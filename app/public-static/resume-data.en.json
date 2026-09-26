@@ -77,28 +77,6 @@
         "Proficient in CMMI software development processes, with well-structured project management and system R&D experience."
       ],
       "logo": "/vendor/logos/icbc.ico"
-    },
-    {
-      "title": "Education · Shanghai Jiao Tong University · Master of Accounting",
-      "meta": "2010 – 2013",
-      "points": [
-        "Master's degree in Accounting, Shanghai Jiao Tong University."
-      ]
-    },
-    {
-      "title": "Education · Shanghai Jiao Tong University · Bachelor of Finance",
-      "meta": "2002 – 2005",
-      "points": [
-        "Bachelor's degree in Finance, Shanghai Jiao Tong University."
-      ]
-    },
-    {
-      "title": "Education · Shanghai Jiao Tong University · Bachelor of Computer Science (Pilot Class)",
-      "meta": "2001 – 2005",
-      "points": [
-        "Bachelor's degree in Computer Science and Technology (Pilot Class), Shanghai Jiao Tong University.",
-        "Certifications: CET-6, Software Designer, CSM (Certified Scrum Master), Futures Practitioner Qualification."
-      ]
     }
   ],
   "projects": [
