@@ -1,4 +1,5 @@
 """Admin Chainlit app: owner-only. Password auth + write tools + file upload ingestion."""
+import json
 import os
 
 import chainlit as cl
@@ -10,7 +11,17 @@ from common.threadstore import SQLiteDataLayer
 
 @cl.data_layer
 def data_layer():
-    return SQLiteDataLayer()
+    dl = SQLiteDataLayer()
+
+    # On the admin side, serve the "admin view" of threads: userIdentifier is
+    # rewritten to 'owner' so Chainlit's resume ACL (which requires
+    # thread.userIdentifier == session.user.identifier) lets the owner resume
+    # VISITOR threads too — previously they failed with "Thread not found." and
+    # the history pane stayed empty. Original author is preserved in
+    # metadata['_orig_author'] for the read-only guard in on_chat_resume.
+    if os.environ.get("SIDE") == "admin":
+        dl.get_thread = dl.get_thread_admin_view  # type: ignore[method-assign]
+    return dl
 
 
 @cl.password_auth_callback
@@ -42,23 +53,51 @@ async def on_resume(thread):
     # visitor threads are recruiter conversations — read-only here, and any
     # message typed into them must NOT be persisted into the recruiter's thread.
     author = thread.get("userIdentifier") or ""
-    cl.user_session.set("resume_author", author)
-    if author != "owner":
-        await cl.Message(
-            content="👤 这是猎头发起的会话，管理端仅可查看，不能追问（避免打扰/污染猎头侧对话）。"
-                    "如需预演问题，请新建会话。"
-        ).send()
-        return
-    # Owner thread: rebuild in-memory history so follow-ups carry context.
+    # Admin view: userIdentifier was rewritten to 'owner' so the resume ACL
+    # passes; recover the real author from metadata for the read-only guard.
+    orig = (thread.get("metadata") or {}).get("_orig_author")
+    cl.user_session.set("resume_author", orig or author)
+    # Replay stored steps into the UI so resumed history is visible.
+    # (Chainlit does NOT render past steps by itself on resume — without this
+    # the chat pane stays empty even though get_thread returns full content.)
+    # Mark each replayed message as already-persisted so send() displays it
+    # WITHOUT writing to the data layer — resuming a recruiter conversation
+    # must not add any steps to the recruiter's thread.
     hist = []
     for s in thread.get("steps", []):
-        if "message" not in str(s.get("type", "")):
+        stype = str(s.get("type", ""))
+        if stype not in ("user_message", "assistant_message"):
             continue
-        if s.get("type") == "user_message":
-            hist.append({"role": "user", "content": s.get("output") or s.get("input") or ""})
-        elif s.get("type") == "assistant_message":
-            hist.append({"role": "assistant", "content": s.get("output") or ""})
-    cl.user_session.set("history", hist[-30:])
+        if stype == "user_message":
+            content = s.get("output") or s.get("input") or ""
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content, ensure_ascii=False)
+            if not str(content).strip():
+                continue
+            m = cl.Message(content=str(content), author=s.get("name") or "user", type="user_message")
+            m.persisted = True
+            await m.send()
+            hist.append({"role": "user", "content": str(content)})
+        else:
+            content = s.get("output") or ""
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content, ensure_ascii=False)
+            if not str(content).strip():
+                continue
+            m = cl.Message(content=str(content), author=s.get("name") or "assistant")
+            m.persisted = True
+            await m.send()
+            hist.append({"role": "assistant", "content": str(content)})
+    if (orig or author) == "owner":
+        # Owner thread: rebuild in-memory history so follow-ups carry context.
+        cl.user_session.set("history", hist[-30:])
+    else:
+        notice = cl.Message(
+            content="👤 以上为猎头会话内容（管理端只读，不能追问，避免打扰/污染猎头侧对话）。"
+                    "如需预演问题，请新建会话。"
+        )
+        notice.persisted = True
+        await notice.send()
 
 
 async def _run_streamed(ag, run_input, msg: cl.Message, prefix: str = ""):

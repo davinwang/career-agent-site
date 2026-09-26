@@ -304,6 +304,30 @@ class SQLiteDataLayer(BaseDataLayer):
             steps=step_dicts, elements=None,
         )
 
+    async def get_thread_admin_view(self, thread_id: str) -> Optional[ThreadDict]:
+        """Admin-side thread fetch for resume.
+
+        Chainlit's resume flow (socket.py resume_thread) refuses to resume
+        unless thread.userIdentifier == session.user.identifier. Admin user is
+        'owner' while visitor threads carry 'visitor-*' → resume silently fails
+        with "Thread not found." and the history pane stays empty.
+
+        Fix: on the admin side, present every thread as authored by 'owner' so
+        the ACL passes, keeping the ORIGINAL author in metadata['_orig_author']
+        so on_chat_resume can still tell recruiter threads from owner threads.
+        """
+        td = await SQLiteDataLayer.get_thread(self, thread_id)
+        if td is None:
+            return None
+        if os.environ.get("SIDE") != "admin":
+            return td
+        orig = td.get("userIdentifier") or "owner"
+        meta = dict(td.get("metadata") or {})
+        meta["_orig_author"] = orig
+        td["userIdentifier"] = "owner"
+        td["metadata"] = meta
+        return td
+
     async def update_thread(
         self,
         thread_id: str,

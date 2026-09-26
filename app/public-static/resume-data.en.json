@@ -24,7 +24,8 @@
         "Built the DevOps system and K8s container-cloud platform from scratch, automating the full development, testing and deployment pipeline with CI/CD coverage approaching 100%, and efficiently supporting delivery of domestic-tech (Xinchuang) transformation initiatives.",
         "Explored domestic-tech (Xinchuang) technology paths and application of Large Language Models (LLM) in financial scenarios; completed technology selection, validation and pilot deployment, advancing intelligent service capabilities.",
         "Responsible for technical talent acquisition and team pipeline development; established R&D standards and code review mechanisms, unified technical standards and improved team collaboration efficiency and engineering quality."
-      ]
+      ],
+      "logo": "/vendor/logos/gtjaqh.ico"
     },
     {
       "title": "Zhuhai Hengqin Jisheng Technology Co., Ltd. · Senior Development Manager",
@@ -54,7 +55,8 @@
         "The Microsoft Commerce division is the backend payment and settlement system of Microsoft's online sales platform, supporting sales of Surface, Office 365, Windows Phone, Xbox and other hardware and software products. As product manager in the payment team, coordinated payment requirements from business units, worked with legal to assess compliance and with finance to analyze financial statement impact, authored requirement documents, reviewed system design and implementation costs with the engineering team, and managed development, testing and launch end to end.",
         "Participated in the Xbox One launch online pre-order project, extending the credit card payment product with a pre-authorized credit payment method. Through effective cross-team communication and resource coordination, advanced the Xbox One pre-order date from June 19, 2013 to June 11, 2013 to precisely match the E3 gaming expo launch cadence, earning high recognition from the gaming division director.",
         "Participated in the second-phase Office 365 launch project for the SMB market, helping design and implement the payment solution and supporting a successful business launch, with positive feedback from the business team."
-      ]
+      ],
+      "logo": "/vendor/logos/microsoft.ico"
     },
     {
       "title": "SAP (Beijing) Software Systems Co., Ltd. / SAP China Research Institute · Backend Developer (Dev Team Lead & Scrum Master)",
@@ -63,7 +65,8 @@
         "Worked in the EPM department of SAP China Research Institute, leading backend development; familiar with FI/CO, HANA and BPC modules and products, and proficient in Scrum agile development processes and practices.",
         "2011.09–2013.01: Participated in development of the HANA Based Analytics and Customer Analytics products, leading the team through the full cycle from requirements analysis and architecture design to development and testing under high pressure, ensuring high-quality delivery and earning strong recognition from the German partner team.",
         "2007.12–2011.09: Participated in development and maintenance of Business Planning and Consolidation (BPC), a product for senior executives such as CFOs/CEOs supporting financial budgeting and report consolidation; led the team in core module development and system optimization to ensure stability and scalability, and took on management responsibilities including product iteration planning, schedule control, risk identification and escalation."
-      ]
+      ],
+      "logo": "/vendor/logos/sap.jpg"
     },
     {
       "title": "Industrial and Commercial Bank of China (ICBC) · Backend Developer / Project Manager",
@@ -72,7 +75,8 @@
         "Joined the Software Development Center of ICBC Head Office in July 2005, working closely with the Head Office Finance & Accounting Department; results were repeatedly recognized by business departments.",
         "Served successively as project developer and project manager; strong backend development skills, familiar with financial accounting, performance evaluation systems and personal finance business, with knowledge of internal audit and interest rate liberalization.",
         "Proficient in CMMI software development processes, with well-structured project management and system R&D experience."
-      ]
+      ],
+      "logo": "/vendor/logos/icbc.ico"
     },
     {
       "title": "Education · Shanghai Jiao Tong University · Master of Accounting",
@@ -99,6 +103,42 @@
   ],
   "projects": [
     {
+      "title": "Wiki Spatiotemporal Map (wiki-spatial-map) · Independent Delivery",
+      "meta": "Architecture & Full-stack · Wikipedia data pipeline · 2026",
+      "points": [
+        "Extracts spatiotemporal information from multilingual Wikipedia dumps and builds an interactive bilingual historical map (wikimap.davin.wang). Processes ~103GB of corpus across 470 files with 57 Python source files.",
+        "Architecture: Docker Compose orchestrating 4 services (mongodb / api / web / pipeline); the pipeline is a one-shot task container decoupled from long-running services, with a five-stage pluggable pipeline (xml_stream → text_extract → impact_classify → llm_refine → censorship), each stage independently toggleable (--no-llm for rule-only extraction, --censorship for Tencent Cloud TMS content review) for explicit cost/quality trade-offs.",
+        "Tiered extraction to cut cost: rule-based extraction as the baseline + FastText impact classification for pre-filtering + LLM refinement (multi-provider: Qwen / MiniMax / Zhipu), avoiding blanket LLM calls over the full corpus while balancing quality and cost.",
+        "Resumable and idempotent: checkpoints persisted per language/batch with --resume / --override / --no-resume, plus data_version + schema_version dual versioning to force reprocessing — massive dump processing can be interrupted and resumed without restarting from scratch.",
+        "Storage & visualization: MongoDB 7 documents shaped for semi-structured spatiotemporal events, GeoJSON + 2dsphere geospatial indexes for map-extent queries, per-language collections for bilingual isolation; FastAPI + Motor fully async backend, Vite + vanilla JS + Leaflet + MarkerCluster frontend (dark theme, dual-slider timeline, multi-civilization layers, mobile-friendly), deployed behind host nginx reverse proxy with server_name whitelist."
+      ],
+      "highlights": [
+        "Delivered the full chain from data extraction and storage to front/back-end visualization solo, with 30+ ops scripts (data-quality checks, duplicate/count/index validation, progress reports, cross-language coordinate fixes) turning one-off data processing into a repeatable system",
+        "Automatic comparison of Natural Earth vector data against Wikipedia historical maps, producing 100+ territory comparison images for manual verification — a data-credibility feedback loop",
+        "Validated a low-cost path to structuring 100GB-scale public corpora via hybrid 'rules + small models + LLM' extraction, reusable for other knowledge-graph / spatiotemporal data scenarios"
+      ],
+      "link": "https://wikimap.davin.wang"
+    },
+    {
+      "title": "Personal Job-Agent Website (job-agent-site) · Independent Delivery",
+      "meta": "Architecture & Full-stack · Agent system · 2026",
+      "points": [
+        "A resume + project + code Q&A system for a single person: the public side lets recruiters/HR self-serve Q&A and displays a multilingual resume page, while the admin side feeds the Agent with resumes, code and documents.",
+        "Architecture: single image with dual entrypoints (SIDE=public|admin selects public.py or admin.py), docker compose with three containers (public / admin / nginx) serving both Chainlit apps — no code forking.",
+        "Permission model pushed into the tool layer: read/write tools assembled by side; the public side only gets read-only tools (knowledge-base retrieval, resume reading) while write tools (upload, reindex, memory write) exist only on the admin side, forming a double defense with prompt-level constraints.",
+        "Zero external middleware: all state in ./data bind volumes — Chainlit SQLite for session memory, facts.json for long-term facts, docs/index.json for the knowledge base; containers can be rebuilt anytime with no DB dependency.",
+        "Fully pluggable LLM: OpenAI Agents SDK + any OpenAI-compatible endpoint (base_url/model via env vars), switchable to domestic models or private deployment to avoid vendor lock-in.",
+        "nginx unified routing (/ → public, /admin/ → admin) serving the static resume page directly; frontend branding via mounted index.html/custom.css without forking the Chainlit frontend build.",
+        "Knowledge-base ingestion supports MD/README/PDF/DOCX/code summaries: chunking + generated summaries written into index.json so the Agent answers project details by retrieval rather than stuffing full text into prompts; long-term memory is plain-text JSON — diffable, editable, rollback-able."
+      ],
+      "highlights": [
+        "Upgrades 'submitting a resume' into 'a conversational interface to personal capabilities' — recruiter self-service Q&A reduces repetitive communication",
+        "Auto-generates CLAUDE.md/AGENT.md code-level documentation so the Agent answers architecture details instead of genericities",
+        "Runs on a single machine with docker compose at near-zero ops cost; the project itself heavily uses AI-assisted (Vibe) Coding — a living example of 'building an Agent system with Agents'"
+      ],
+      "link": "https://aboutme.davin.wang"
+    },
+    {
       "title": "Low-Code AI-Assisted Programming Modernization · Independent Delivery",
       "meta": "VS Code Extension · Syntax highlighting/linting/completion/server communication/Agent Skill · 2025.09 – 2026.04",
       "points": [
@@ -110,6 +150,25 @@
       ]
     },
     {
+      "title": "Equity Research Report Aggregation & AI Analysis Platform · Independent Delivery",
+      "meta": "Architecture & Full-stack · Market data / research reports / AI · 2025 - 2026",
+      "points": [
+        "Independently designed and built an investment-research data aggregation and AI-assisted analysis platform benchmarked against commercial research aggregation products, covering A-share equities + indices + stock index futures (IF/IH/IC/IM) + stock index options (IO/MO/HO).",
+        "Architecture: data and requests fully decoupled (the UI never scrapes in real time; multi-source adapter scheduling writes to DB; the frontend reads only from DB); 18+ data-source adapters with unified retry/backoff, rate limiting, idempotent upsert and freshness tagging — any single source can fail without breaking the system.",
+        "Frequency-grouped cron scheduling: intraday (every 10 min) / post-close (16:30) / evening (19:00) / weekly master data / weekly financials / news (every 20 min), each independently overridable; automatic full seeding on empty DB and automatic re-run when data is stale beyond 3 days.",
+        "Zero external middleware: SQLite (WAL) instead of a standalone DB, in-process TTL cache instead of Redis, self-built thread-safe SSE real-time channel — the full stack runs on a single machine.",
+        "Same-process read-only MCP (Streamable HTTP): 13 read-only tools expose dashboards/stocks/reports/indicators/signals/funds to AI clients such as Claude Code and Cursor, with Bearer Token auth, DNS-rebinding protection and a Host whitelist.",
+        "Hand-written technical indicator engine (MA/MACD/KDJ/RSI/BOLL) in pure numpy/pandas, avoiding TA-Lib native compilation issues for cross-platform installability; index futures basis/term structure, option PCR, northbound/margin/Longhudan fund flows and sector correlation + beta served via server-side cache + pre-warming.",
+        "Docker multi-stage builds + docker-compose one-command stack; frontend React 18 / Vite / TS / Ant Design v5 / ECharts 5 / TanStack Query v5 / Zustand."
+      ],
+      "highlights": [
+        "Independently delivered a shippable, extensible three-phase platform (Phase 1: dashboard / report library / indicators / financials / stocks; Phase 2: whole-market overview / signals / basis / options / fund flows / correlation / sentiment / ops; Phase 3: AI comprehensive analysis & assistant behind feature flags)",
+        "Aggregates quotes, research reports, financials, fund flows, sentiment and actionable signals in one place, significantly reducing researchers' multi-source switching and manual compilation cost",
+        "Every item annotated with data source and data date (freshness badges) for traceability and compliance"
+      ],
+      "link": "http://49.235.163.102:30082/market"
+    },
+    {
       "title": "Guotai Junan Futures Investment Management Project · Backend Development",
       "meta": "Calmar/Sharpe/IR/Sortino metrics · Multi-process & multi-threaded · Vectorized computing · 2023.11 – 2025.06",
       "points": [
@@ -118,14 +177,6 @@
         "The post-investment module precisely calculates actual investment returns at fund, strategy and department level based on subscription/redemption records, NAV changes, fee accrual rules and index hedging trade data.",
         "Combining multi-process, multi-threaded and vectorized computing to fully refactor the fund metric computation module, reducing key metric computation for 1,000+ funds from 90 seconds to 3–5 seconds and cutting overall system runtime from 4–8 hours to 3–5 minutes.",
         "Led the design and implementation of whole-market quote data persistence, real-time exposure calculation and real-time stock index basis calculation, integrating and storing 2,000+ real-time stock index option quotes; a single server supports 20 concurrent users each viewing real-time basis for 16 stock index futures on one screen, ran stably through the extreme market conditions of the 2024 National Day holiday, and retains ample performance headroom."
-      ]
-    },
-    {
-      "title": "3rd Pazhou Algorithm Competition · Team Lead / Convener",
-      "meta": "Dify, LangChain, Agent · 2024.07 – 2024.08",
-      "points": [
-        "Focused on applying LLM and Agent technologies to real-world scenarios, exploring intelligent solutions in the legal and finance domains and strengthening model reasoning and system integration experience.",
-        "The preliminary-round solution closely matched the official reference answer, ranking in the top 20% overall."
       ]
     },
     {
@@ -165,6 +216,14 @@
         "Responsible for overall App backend development and team management, including development standards, project management standards, release standards and operational emergency procedures, plus technical problem-solving and hiring.",
         "The purchased middleware was written in C++ and Delphi accumulated over years in the securities industry and was extremely costly to maintain; led the team to solve C++/Lua asynchronous bridging, dramatically reducing maintenance cost while proving more stable than C++."
       ]
+    },
+    {
+      "title": "3rd Pazhou Algorithm Competition · Team Lead / Convener",
+      "meta": "Dify, LangChain, Agent · 2024.07 – 2024.08",
+      "points": [
+        "Focused on applying LLM and Agent technologies to real-world scenarios, exploring intelligent solutions in the legal and finance domains and strengthening model reasoning and system integration experience.",
+        "The preliminary-round solution closely matched the official reference answer, ranking in the top 20% overall."
+      ]
     }
   ],
   "skills": [
@@ -181,19 +240,22 @@
       "school": "Shanghai Jiao Tong University",
       "degree": "M.S.",
       "field": "Accounting",
-      "period": "2010 - 2013"
+      "period": "2010 - 2013",
+      "logo": "/vendor/logos/sjtu.png"
     },
     {
       "school": "Shanghai Jiao Tong University",
       "degree": "B.S.",
       "field": "Finance",
-      "period": "2002 - 2005"
+      "period": "2002 - 2005",
+      "logo": "/vendor/logos/sjtu.png"
     },
     {
       "school": "Shanghai Jiao Tong University",
       "degree": "B.S.",
       "field": "Computer Science (Pilot Class)",
-      "period": "2001 - 2005"
+      "period": "2001 - 2005",
+      "logo": "/vendor/logos/sjtu.png"
     }
   ]
 }
