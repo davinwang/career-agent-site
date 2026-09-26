@@ -101,8 +101,13 @@ async def on_resume(thread):
 
 
 async def _run_streamed(ag, run_input, msg: cl.Message, prefix: str = ""):
-    """Run the agent with token streaming into msg; returns the RunResult."""
-    streamed = Runner.run_streamed(ag, run_input)
+    """Run the agent with token streaming into msg; returns the RunResult.
+
+    max_turns raised from the SDK default (10): multi-step admin tasks
+    (edit data + rebuild + verify) regularly exceed 10 tool round-trips and
+    were silently aborted with 'Max turns (10) exceeded' and no answer.
+    """
+    streamed = Runner.run_streamed(ag, run_input, max_turns=40)
     async for ev in streamed.stream_events():
         if ev.type == "raw_response_event":
             d = ev.data
@@ -210,7 +215,19 @@ async def main(message: cl.Message):
             "content": f"用户上传了形象照 {avatar_upload['name']}。base64 如下。\n{avatar_upload['note']}\n\nBASE64:\n{avatar_upload['b64']}",
         }]
     result = await _run_streamed(ag, run_input, msg)
-    answer = result.final_output or "(no answer)"
+    # If the run hit the turn limit, the SDK raises no error but yields a
+    # turn-limited result with empty final_output — surface it honestly
+    # instead of "(no answer)".
+    turn_limited = any(
+        getattr(t, "type", "") == "max_turns_exceeded"
+        for t in (getattr(result, "new_items", None) or [])
+    ) or "Max turns" in str(getattr(result, "_last_agent", "") or "")
+    if turn_limited:
+        answer = ("⚠️ 本轮任务步骤数超出单次运行上限，已被中断（部分操作可能已完成）。"
+                  "请拆分为更小的任务分步执行，或重发一次继续。")
+        await msg.update()
+    else:
+        answer = result.final_output or "(no answer)"
     history.append({"role": "assistant", "content": answer})
 
     # 2) If a resume-like file was ingested, force a structured landing-page refresh.
