@@ -106,14 +106,50 @@ async def _run_streamed(ag, run_input, msg: cl.Message, prefix: str = ""):
     max_turns raised from the SDK default (10): multi-step admin tasks
     (edit data + rebuild + verify) regularly exceed 10 tool round-trips and
     were silently aborted with 'Max turns (10) exceeded' and no answer.
+
+    Transparency: every tool call (name + arguments) and its output are shown
+    as collapsed '🔧' steps in the chat, so multi-step operations are visible
+    instead of a silent pause followed by an answer.
     """
     streamed = Runner.run_streamed(ag, run_input, max_turns=40)
+    tool_steps: dict[str, cl.Step] = {}
     async for ev in streamed.stream_events():
         if ev.type == "raw_response_event":
             d = ev.data
             if getattr(d, "type", "") == "response.output_text.delta":
                 await msg.stream_token((prefix + d.delta) if prefix else d.delta)
                 prefix = ""
+        elif ev.type == "run_item_stream_event":
+            item = getattr(ev, "item", None)
+            itype = type(item).__name__
+            if itype == "ToolCallItem":
+                call = getattr(item, "raw_item", None)
+                fn = getattr(call, "name", "") or "tool"
+                args = getattr(call, "arguments", "") or ""
+                try:
+                    args_pretty = json.dumps(json.loads(args), ensure_ascii=False)
+                except (ValueError, TypeError):
+                    args_pretty = str(args)
+                step = cl.Step(name=f"🔧 {fn}", type="tool", show_input="json")
+                step.input = args_pretty
+                step.default_open = False
+                await step.send()
+                call_id = getattr(call, "call_id", None) or getattr(call, "id", None) or fn
+                tool_steps[str(call_id)] = step
+            elif itype == "ToolCallOutputItem":
+                call = getattr(item, "raw_item", None)
+                call_id = str(getattr(call, "call_id", None) or getattr(call, "id", "") or "")
+                step = tool_steps.get(call_id)
+                if step is None:
+                    # output arrived without a tracked call; still show it
+                    step = cl.Step(name="🔧 tool result", type="tool")
+                    await step.send()
+                out = getattr(item, "output", "")
+                step.output = out if isinstance(out, str) else json.dumps(out, ensure_ascii=False, default=str)
+                await step.update()
+            elif itype == "MessageOutputItem":
+                # final-answer text deltas already stream via raw_response_event
+                pass
     return streamed
 
 
@@ -239,8 +275,11 @@ async def main(message: cl.Message):
         for t in (getattr(result, "new_items", None) or [])
     ) or "Max turns" in str(getattr(result, "_last_agent", "") or "")
     if turn_limited:
-        answer = ("⚠️ 本轮任务步骤数超出单次运行上限，已被中断（部分操作可能已完成）。"
-                  "请拆分为更小的任务分步执行，或重发一次继续。")
+        n_tool = sum(1 for t in (getattr(result, "new_items", None) or [])
+                     if type(t).__name__ == "ToolCallItem")
+        answer = (f"⚠️ 本轮已执行 {n_tool} 次工具调用后仍超出单次运行上限（40 轮），"
+                  f"任务被中断——部分操作可能已完成，上方 🔧 步骤可查看已执行的操作。"
+                  f"请拆分为更小的任务分步执行，或重发一次继续。")
         await msg.update()
     else:
         answer = result.final_output or "(no answer)"
