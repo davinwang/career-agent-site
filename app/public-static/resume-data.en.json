@@ -117,7 +117,9 @@
         "Automatic comparison of Natural Earth vector data against Wikipedia historical maps, producing 100+ territory comparison images for manual verification — a data-credibility feedback loop",
         "Validated a low-cost path to structuring 100GB-scale public corpora via hybrid 'rules + small models + LLM' extraction, reusable for other knowledge-graph / spatiotemporal data scenarios"
       ],
-      "link": "https://wikimap.davin.wang"
+      "demo_link": "https://wikimap.davin.wang",
+      "repo_link": "https://github.com/davinwang/wiki-spatial-map",
+      "open_source": true
     },
     {
       "title": "Personal Job-Agent Website (job-agent-site) · Independent Delivery",
@@ -136,7 +138,9 @@
         "Auto-generates CLAUDE.md/AGENT.md code-level documentation so the Agent answers architecture details instead of genericities",
         "Runs on a single machine with docker compose at near-zero ops cost; the project itself heavily uses AI-assisted (Vibe) Coding — a living example of 'building an Agent system with Agents'"
       ],
-      "link": "https://aboutme.davin.wang"
+      "demo_link": "https://aboutme.davin.wang",
+      "repo_link": "https://github.com/davinwang/job-agent-site",
+      "open_source": true
     },
     {
       "title": "Low-Code AI-Assisted Programming Modernization · Independent Delivery",
@@ -147,7 +151,8 @@
         "99% of the project's own code was written via Vibe Coding.",
         "Directly improved low-code developer productivity by 20%–100%; used by no fewer than 50 people, saving the company about RMB 2 million per year.",
         "100+ iterations in six months — truly with AI, by AI, for AI."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "Equity Research Report Aggregation & AI Analysis Platform · Independent Delivery",
@@ -166,7 +171,8 @@
         "Aggregates quotes, research reports, financials, fund flows, sentiment and actionable signals in one place, significantly reducing researchers' multi-source switching and manual compilation cost",
         "Every item annotated with data source and data date (freshness badges) for traceability and compliance"
       ],
-      "link": "http://49.235.163.102:30082/market"
+      "demo_link": "http://49.235.163.102:30082/market",
+      "open_source": false
     },
     {
       "title": "All-Variety Futures Research Data Agent (gtjaqh-data-agent) · Independent Delivery",
@@ -177,7 +183,8 @@
         "Template- and checklist-driven output for consistent, source-traceable research content"
       ],
       "highlights": [],
-      "link": "https://github.com/davinwang/gtjaqh-data-agent"
+      "repo_link": "https://github.com/davinwang/gtjaqh-data-agent",
+      "open_source": true
     },
     {
       "title": "Guotai Junan Futures Investment Management Project · Backend Development",
@@ -188,7 +195,8 @@
         "The post-investment module precisely calculates actual investment returns at fund, strategy and department level based on subscription/redemption records, NAV changes, fee accrual rules and index hedging trade data.",
         "Combining multi-process, multi-threaded and vectorized computing to fully refactor the fund metric computation module, reducing key metric computation for 1,000+ funds from 90 seconds to 3–5 seconds and cutting overall system runtime from 4–8 hours to 3–5 minutes.",
         "Led the design and implementation of whole-market quote data persistence, real-time exposure calculation and real-time stock index basis calculation, integrating and storing 2,000+ real-time stock index option quotes; a single server supports 20 concurrent users each viewing real-time basis for 16 stock index futures on one screen, ran stably through the extreme market conditions of the 2024 National Day holiday, and retains ample performance headroom."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "Guotai Junan Futures In-House App · Architecture & Implementation",
@@ -199,7 +207,8 @@
         "Defined and enforced development standards and communication protocol specs, and coordinated full-chain performance planning with clear TPS targets and design goals, supporting an App design DAU of 1 million.",
         "Delivered the project from initiation to full launch in only 6 months; simultaneously built the K8s container-cloud platform and DevOps platform to automate CI/CD.",
         "Contributed code updates to selected open-source components (e.g. the Go-based OAuth2proxy) to enhance system security and compatibility."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "DevOps Platform · Architecture & Implementation",
@@ -209,7 +218,8 @@
         "Built unified CI/CD pipelines on GitLab and Kubernetes/Rancher so that front-end and back-end services are automatically built, deployed and released on commit, significantly improving release efficiency.",
         "Built an EFK log collection and analysis platform for centralized log management and rapid troubleshooting; participated in technology selection and procurement decisions for the monitoring platform, advancing operations toward automation and visualization.",
         "All backend applications achieved automatic packaging and one-click release, laying the groundwork for the subsequent successful launch of the Guotai Junan Futures in-house App."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "Guotai Junan Futures Corporate Website · Project Lead",
@@ -217,7 +227,8 @@
       "points": [
         "Responsible for all aspects from requirements analysis, system design, development, testing and deployment to outsourced team management, daily operations, security drills, emergency drills, Classified Protection certification and Xinchuang transformation.",
         "Ensured security and stability across details including national cryptography (SM), CDN, IPv6 and penetration scanning; participated multiple times in simulated cyber attack-defense drills and successfully withstood all of them."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "Guoshengtong App · Backend Development Lead",
@@ -226,7 +237,8 @@
         "Guoshengtong App is the official mobile stock trading software of Guosheng Securities, with roughly 90,000–300,000 daily active users.",
         "Responsible for overall App backend development and team management, including development standards, project management standards, release standards and operational emergency procedures, plus technical problem-solving and hiring.",
         "The purchased middleware was written in C++ and Delphi accumulated over years in the securities industry and was extremely costly to maintain; led the team to solve C++/Lua asynchronous bridging, dramatically reducing maintenance cost while proving more stable than C++."
-      ]
+      ],
+      "open_source": false
     },
     {
       "title": "3rd Pazhou Algorithm Competition · Team Lead / Convener",
@@ -234,7 +246,8 @@
       "points": [
         "Focused on applying LLM and Agent technologies to real-world scenarios, exploring intelligent solutions in the legal and finance domains and strengthening model reasoning and system integration experience.",
         "The preliminary-round solution closely matched the official reference answer, ranking in the top 20% overall."
-      ]
+      ],
+      "open_source": false
     }
   ],
   "skills": [

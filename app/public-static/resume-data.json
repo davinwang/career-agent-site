@@ -82,27 +82,28 @@
       ]
     }
   ],
-  "education": [
-    {
-      "school": "上海交通大学",
-      "degree": "硕士",
-      "field": "会计学",
-      "period": "2010 - 2013"
-    },
-    {
-      "school": "上海交通大学",
-      "degree": "本科",
-      "field": "金融学",
-      "period": "2002 - 2005"
-    },
-    {
-      "school": "上海交通大学",
-      "degree": "本科",
-      "field": "计算机科学与技术（试点班）",
-      "period": "2001 - 2005"
-    }
-  ],
   "projects": [
+    {
+      "name": "股票研报聚合与AI研判平台（个人独立项目）",
+      "role": "独立完成 · 架构设计与全栈实现",
+      "period": "2025 - 2026",
+      "content": [
+        "对标商业研报聚合平台，独立设计并实现覆盖 A股个股 + 指数 + 股指期货(IF/IH/IC/IM) + 股指期权(IO/MO/HO) 的投研数据聚合与 AI 辅助研判平台。",
+        "架构决策：数据与请求彻底解耦（UI 永不实时爬取，多源适配器调度入库，前端只读 DB）；18+ 数据源适配器统一封装重试/退避、限流、幂等 upsert 与新鲜度打标，单源失效可降级。",
+        "按频率分组 cron 调度：盘中(每10分钟)/收盘后(16:30)/晚间(19:00)/周度主数据/周度财报/资讯(每20分钟) 可独立覆盖；空库启动自动全量种子、数据陈旧超3天自动补跑。",
+        "零外部中间件：SQLite(WAL) 替代独立 DB、进程内 TTL 缓存替代 Redis、SSE 自建线程安全实时通道，单机即可跑全栈。",
+        "同进程挂载只读 MCP（Streamable HTTP）：13 个只读工具把看板/个股/研报/指标/信号/资金等能力开放给 Claude Code、Cursor 等 AI 客户端，含 Bearer Token 鉴权、DNS-rebinding 防护与 Host 白名单。",
+        "纯 numpy/pandas 手写技术指标引擎（MA/MACD/KDJ/RSI/BOLL），绕开 TA-Lib 原生编译问题保证跨平台可装可测；期指基差/期限结构、期权PCR、北向/两融/龙虎榜资金流、板块联动相关性+beta 走服务端缓存+预热。",
+        "Docker 多阶段构建 + docker-compose 一键起栈，前端 React 18/Vite/TS/Ant Design v5/ECharts 5/TanStack Query v5/Zustand。"
+      ],
+      "highlights": [
+        "独立交付可上线、可扩展的三期规划平台（Phase1 看板/研报库/指标/财务/个股；Phase2 全市场速览/信号/基差/期权/资金流/联动/舆情/运营；Phase3 AI综合研判与AI助手，特性开关控制）",
+        "一处聚合行情、研报、财务、资金、舆情与可操作信号，显著降低研究员多源切换与人工整理成本",
+        "全站标注数据来源与数据日期（新鲜度徽标），保证可溯源、合规"
+      ],
+      "demo_link": "http://49.235.163.102:30082",
+      "open_source": false
+    },
     {
       "name": "Wiki时空地图（wiki-spatial-map）",
       "role": "独立完成 · 架构设计与全栈实现",
@@ -119,7 +120,9 @@
         "引入 Natural Earth 矢量数据与 Wikipedia 历史地图自动比对，产出 100+ 张疆域对比图做人工核查，形成数据可信度闭环",
         "验证了「规则 + 小模型 + LLM」混合抽取在百 GB 级公开语料上的低成本结构化路径，可复用于其他知识图谱/时空数据场景"
       ],
-      "link": "https://wikimap.davin.wang"
+      "demo_link": "https://wikimap.davin.wang",
+      "repo_link": "https://github.com/davinwang/wiki-spatial-map",
+      "open_source": true
     },
     {
       "name": "个人求职 Agent 网站（job-agent-site）",
@@ -139,7 +142,9 @@
         "项目文档自动生成 CLAUDE.md/AGENT.md 代码级理解文档，让 Agent 能回答架构细节而非泛泛而谈",
         "单机 docker compose 即可承载，运维成本接近零；项目本身大量采用 AI 辅助(Vibe) Coding，是「用 Agent 写 Agent 系统」的实践样例"
       ],
-      "link": "https://aboutme.davin.wang"
+      "demo_link": "https://aboutme.davin.wang",
+      "repo_link": "https://github.com/davinwang/job-agent-site",
+      "open_source": true
     },
     {
       "name": "低代码AI辅助编程改造项目",
@@ -154,38 +159,23 @@
         "直接提升低代码开发人员 20%~100% 效率",
         "实际使用人员不少于 50 人，约为公司每年节省 200 万元",
         "六个月迭代 100+ 次，真正做到 with AI, by AI, for AI"
-      ]
-    },
-    {
-      "name": "股票研报聚合与AI研判平台（个人独立项目）",
-      "role": "独立完成 · 架构设计与全栈实现",
-      "period": "2025 - 2026",
-      "content": [
-        "对标商业研报聚合平台，独立设计并实现覆盖 A股个股 + 指数 + 股指期货(IF/IH/IC/IM) + 股指期权(IO/MO/HO) 的投研数据聚合与 AI 辅助研判平台。",
-        "架构决策：数据与请求彻底解耦（UI 永不实时爬取，多源适配器调度入库，前端只读 DB）；18+ 数据源适配器统一封装重试/退避、限流、幂等 upsert 与新鲜度打标，单源失效可降级。",
-        "按频率分组 cron 调度：盘中(每10分钟)/收盘后(16:30)/晚间(19:00)/周度主数据/周度财报/资讯(每20分钟) 可独立覆盖；空库启动自动全量种子、数据陈旧超3天自动补跑。",
-        "零外部中间件：SQLite(WAL) 替代独立 DB、进程内 TTL 缓存替代 Redis、SSE 自建线程安全实时通道，单机即可跑全栈。",
-        "同进程挂载只读 MCP（Streamable HTTP）：13 个只读工具把看板/个股/研报/指标/信号/资金等能力开放给 Claude Code、Cursor 等 AI 客户端，含 Bearer Token 鉴权、DNS-rebinding 防护与 Host 白名单。",
-        "纯 numpy/pandas 手写技术指标引擎（MA/MACD/KDJ/RSI/BOLL），绕开 TA-Lib 原生编译问题保证跨平台可装可测；期指基差/期限结构、期权PCR、北向/两融/龙虎榜资金流、板块联动相关性+beta 走服务端缓存+预热。",
-        "Docker 多阶段构建 + docker-compose 一键起栈，前端 React 18/Vite/TS/Ant Design v5/ECharts 5/TanStack Query v5/Zustand。"
       ],
-      "highlights": [
-        "独立交付可上线、可扩展的三期规划平台（Phase1 看板/研报库/指标/财务/个股；Phase2 全市场速览/信号/基差/期权/资金流/联动/舆情/运营；Phase3 AI综合研判与AI助手，特性开关控制）",
-        "一处聚合行情、研报、财务、资金、舆情与可操作信号，显著降低研究员多源切换与人工整理成本",
-        "全站标注数据来源与数据日期（新鲜度徽标），保证可溯源、合规"
-      ]
+      "open_source": false
     },
     {
       "name": "全品种期货投研数据Agent（gtjaqh-data-agent）",
       "role": "个人独立项目",
       "period": "2026.09",
-      "content": "面向期货研究场景的全品种数据Agent：内置 futures-research 技能体系（研究范式、品种知识链、指标指南、报告模板与质量清单），覆盖数十个期货品种的产业链/供需/库存/基差等结构化研究资料，支持从数据接入、指标计算到投研报告生成的端到端流程；采用 MCP 工具协议与问题路由设计，保证数据中立与结论可溯源。",
+      "content": [
+        "面向期货研究场景的全品种数据Agent：内置 futures-research 技能体系（研究范式、品种知识链、指标指南、报告模板与质量清单），覆盖数十个期货品种的产业链/供需/库存/基差等结构化研究资料，支持从数据接入、指标计算到投研报告生成的端到端流程；采用 MCP 工具协议与问题路由设计，保证数据中立与结论可溯源。"
+      ],
       "highlights": [
         "812个文件的全品种研究知识库（产业链chain/框架/指标/历史/状态五维结构）",
         "MCP工具协议 + 问题路由器，按问题类型自动选择数据工具与知识路径",
         "报告模板与质量检查清单驱动，输出结构一致、可溯源的投研内容"
       ],
-      "link": "https://github.com/davinwang/gtjaqh-data-agent"
+      "repo_link": "https://github.com/davinwang/gtjaqh-data-agent",
+      "open_source": true
     },
     {
       "name": "国泰君安期货投资管理项目",
@@ -199,7 +189,8 @@
       "highlights": [
         "结合多进程、多线程与向量化计算全面重构基金指标计算模块，1000余只基金关键指标计算从90秒优化至3-5秒，系统整体运行时间由4-8小时压缩至3-5分钟",
         "主导全市场行情数据落库、实时敞口计算与实时股指基差计算，完成2000+实时股指期权行情接入与存储；单台服务器支持20用户并发、每人同屏16支股指期货实时基差计算，2024年国庆极端行情稳定运行"
-      ]
+      ],
+      "open_source": false
     },
     {
       "name": "国泰君安期货自研App",
@@ -215,7 +206,8 @@
         "支撑App设计日活达100万",
         "同步搭建K8s容器云平台与DevOps平台，实现CI/CD自动化",
         "为选型开源组件（如OAuth2proxy，Go语言）贡献代码更新"
-      ]
+      ],
+      "open_source": false
     },
     {
       "name": "开发运维DevOps平台",
@@ -228,7 +220,8 @@
       ],
       "highlights": [
         "所有后台应用实现自动打包、一键发布，为自研App顺利上线做好铺垫"
-      ]
+      ],
+      "open_source": false
     },
     {
       "name": "国泰君安期货官网",
@@ -240,7 +233,8 @@
       ],
       "highlights": [
         "多次参加模拟攻防等网络安全演练，均成功抵御"
-      ]
+      ],
+      "open_source": false
     },
     {
       "name": "国盛通App",
@@ -253,7 +247,8 @@
       "highlights": [
         "带队攻关C++/Lua异步桥接技术，成功后维护成本骤降且较C++更稳定",
         "涉及技术：异步编程、C++、Lua、Java、Consul、Ehcache/Redis"
-      ]
+      ],
+      "open_source": false
     },
     {
       "name": "第三届琶洲算法大赛",
@@ -265,7 +260,8 @@
       ],
       "highlights": [
         "初赛阶段方案与官方参考答案高度一致，综合排名进入初赛前20%"
-      ]
+      ],
+      "open_source": false
     }
   ],
   "skills": {

@@ -168,13 +168,21 @@ def generate(lang: str = "zh") -> tuple[bytes | None, str]:
             title = p.get("title") or p.get("name") or ""
             meta = p.get("meta") or p.get("period") or ""
             points = p.get("points") or p.get("highlights") or p.get("content") or []
-            link = p.get("link") or ""
+            demo = p.get("demo_link") or p.get("link") or ""
+            repo = p.get("repo_link") or ""
+            att = p.get("attachment_link") or ""
             story.append(Paragraph(_esc(title), s_h3))
             if meta:
                 story.append(Paragraph(_esc(meta), s_meta))
-            if link:
-                story.append(Paragraph(
-                    f'<a href="{_esc(link)}" color="#2563eb">{_esc(link)} ↗</a>', s_li))
+            links = []
+            if demo:
+                links.append(f'<a href="{_esc(demo)}" color="#2563eb">{_esc(demo)} ↗</a>')
+            if repo:
+                links.append(f'<a href="{_esc(repo)}" color="#2563eb">[源代码] {_esc(repo)} ↗</a>')
+            if att:
+                links.append(f'<a href="{_esc(att)}" color="#2563eb">[附件] {_esc(att)} ↗</a>')
+            if links:
+                story.append(Paragraph(" | ".join(links), s_li))
             for pt in points:
                 story.append(Paragraph(_esc(pt), s_li, bulletText="•"))
             story.append(Spacer(1, 5))

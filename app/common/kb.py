@@ -307,6 +307,7 @@ def write_resume_page(data: dict, lang: str = "zh") -> str:
         if not data.get(k):
             return f"error: field '{k}' is required"
     allowed = ["name", "status", "tags", "summary", "experience", "projects", "skills", "education"]
+    # per-project link granularity lives inside project dicts; no top-level change needed
     dest = _resume_page_path(lang)
 
     # start from the current live content (merge base)

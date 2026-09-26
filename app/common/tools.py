@@ -69,6 +69,10 @@ class ProjectItem(BaseModel):
     title: str = Field("", description="项目名称")
     meta: str = Field("", description="技术栈")
     points: list[str] = Field(default_factory=list, description="亮点列表")
+    demo_link: str = Field("", description="项目展示链接（在线演示/官网）。为空则不显示")
+    repo_link: str = Field("", description="源代码链接——仅当项目开源时提供；闭源项目必须留空")
+    attachment_link: str = Field("", description="附件链接（文档/报告/截图等），可为空")
+    open_source: bool = Field(False, description="项目是否开源。False(闭源)时 repo_link 必须为空")
 
 
 class ResumePage(BaseModel):
@@ -96,6 +100,14 @@ def update_resume_page(page: ResumePage, lang: str = "zh") -> str:
     the new one. Set _force=true ONLY to deliberately delete items (rare).
     """
     d = page.model_dump(exclude_none=True)
+    # open/closed-source consistency: repo link only for open-source projects
+    for p in d.get("projects", []):
+        if not p.get("open_source") and p.get("repo_link"):
+            return (f"error: 项目 '{p.get('title','')}' 标记为闭源但提供了 repo_link。"
+                    f"闭源项目不得提供源代码链接；如确为开源，请设 open_source=true")
+        if p.get("open_source") and not p.get("repo_link") and p.get("title"):
+            # tolerated: user may declare open-source but not publish the repo yet
+            pass
     cleaned = {k: v for k, v in d.items() if v not in ("", [], None)}
     r = kb.write_resume_page(cleaned, lang)
     if not r.startswith("error"):
