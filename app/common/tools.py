@@ -60,14 +60,14 @@ def get_resume_page(lang: str = "zh") -> str:
 
 
 class ExperienceItem(BaseModel):
-    model_config = ConfigDict(extra="allow")  # passthrough logo/company/role/... — schema-drift-proof
+    model_config = ConfigDict(extra="ignore")  # strict schema required by openai-agents; logos preserved via kb merge
     title: str = Field("", description="公司 · 职位（或用 company+role 字段）")
     meta: str = Field("", description="时间段（或用 period 字段）")
     points: list[str] = Field(default_factory=list, description="亮点列表（或用 highlights 字段）")
 
 
 class EducationItem(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
     school: str = Field("", description="学校")
     degree: str = Field("", description="学位")
     field: str = Field("", description="专业")
@@ -76,7 +76,7 @@ class EducationItem(BaseModel):
 
 
 class ProjectItem(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
     title: str = Field("", description="项目名称")
     meta: str = Field("", description="技术栈")
     points: list[str] = Field(default_factory=list, description="亮点列表")
@@ -89,7 +89,7 @@ class ProjectItem(BaseModel):
 
 class ResumePage(BaseModel):
     """Public landing resume page content."""
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
     name: str = Field("", description="候选人姓名")
     status: str = Field("", description="一句话状态，如: 在职看机会 · 期望后端/全栈 · 上海")
     tags: list[str] = Field(default_factory=list, description="技能标签")
