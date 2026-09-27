@@ -1,0 +1,65 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    container_name: jas-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ../data:/app/data
+      # The seed script resolves the legacy resume JSON through ROOT_DIR, which is
+      # "/" inside the image (compiled to /app/dist). Mount the legacy static dir
+      # read-only at that location so resume data can be seeded.
+      - ../legacy/app/public-static:/legacy/app/public-static:ro
+    expose:
+      - "4111"
+    # node:22-slim ships neither wget nor curl, so probe the health endpoint with
+    # Node's built-in fetch instead of relying on a binary that isn't installed.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4111/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  recruiter:
+    build:
+      context: ..
+      dockerfile: deploy/recruiter.Dockerfile
+    container_name: jas-recruiter
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  admin:
+    build:
+      context: ..
+      dockerfile: deploy/admin.Dockerfile
+    container_name: jas-admin
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  nginx:
+    image: nginx:alpine
+    container_name: jas-nginx
+    restart: unless-stopped
+    ports:
+      - "${EXPOSE_PORT:-8090}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      recruiter:
+        condition: service_started
+      admin:
+        condition: service_started

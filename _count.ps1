@@ -1,0 +1,1 @@
+Get-ChildItem -Recurse -File 'c:\Users\davin\Documents\projects\job-agent-site\sample_data\project_source_codes' | Group-Object { $_.FullName.Substring($_.FullName.IndexOf('project_source_codes')+21).Split('\')[0] } | Select-Object Name, Count 

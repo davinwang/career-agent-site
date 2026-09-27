@@ -1,8 +1,29 @@
-*
-!common/
-!requirements.lock
-!chainlit-config.toml
-!public.py
-!admin.py
-!entrypoint.py
-!.chainlit/
+# Keep the Docker build context lean and avoid leaking local artifacts.
+# The compose build context is the workspace root (deploy/docker-compose.yml -> context: ..).
+
+**/node_modules
+**/dist
+**/.vite
+**/*.log
+
+# Host TypeScript incremental build state — leaks host paths into the image and
+# makes `tsc -b` skip emitting/validating inside the container.
+**/*.tsbuildinfo
+
+# runtime data (mounted as a volume, never baked into images)
+data/db
+data/uploads
+data/repos
+*.db
+
+# local env & secrets
+.env
+**/.env
+deploy/.env
+
+# not needed inside any image
+.git
+.gitignore
+legacy/
+sample_data/
+fonts/**/.DS_Store

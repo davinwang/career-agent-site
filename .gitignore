@@ -1,4 +1,22 @@
+
+# legacy reference project
+legacy/
+
+# sample data which can be used for testing
+sample_data/
+
+# dependencies & build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# runtime data (keep directory markers, ignore generated content)
+data/db/
+data/uploads/
+data/repos/
+*.db
+
+# environment
 .env
-data/
-__pycache__/
-*.pyc
+deploy/.env
+

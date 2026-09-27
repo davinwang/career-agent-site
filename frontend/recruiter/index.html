@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#e9e2d3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c0b10" media="(prefers-color-scheme: dark)" />
+    <meta
+      name="description"
+      content="候选人简历与 AI 助手 · Candidate résumé &amp; AI recruiting agent"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@300..800&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <title>候选人简历 · AI 助手</title>
+
+    <!-- Resolve the theme before first paint so there is no flash of wrong colours. -->
+    <style>
+      .splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e9e2d3;
+        color: #837c8f;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+      }
+      html.dark .splash {
+        background: #0c0b10;
+        color: #7e7789;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('job-agent-theme');
+          var dark =
+            stored === 'dark' ||
+            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.classList.toggle('dark', dark);
+          root.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {
+          /* private mode / storage blocked — fall back to light */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Static splash, replaced as soon as React mounts. -->
+      <div class="splash">Loading dossier…</div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,129 @@
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { get, all, run } from '../db/client.js';
+import { authRequired, type AppEnv } from './auth.js';
+
+interface SessionRow {
+  id: string;
+  side: string;
+  created_at: string;
+  updated_at: string;
+  metadata: string | null;
+}
+
+interface MessageRow {
+  id: number;
+  session_id: string;
+  role: string;
+  content: string;
+  tool_calls: string | null;
+  created_at: string;
+}
+
+const sideSchema = z.enum(['recruiter', 'admin']);
+
+const createSessionSchema = z.object({
+  id: z.string().min(1),
+  side: sideSchema,
+  metadata: z.record(z.unknown()).optional(),
+});
+
+const appendMessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system', 'tool']),
+  content: z.string(),
+  tool_calls: z.unknown().optional(),
+});
+
+export const sessionRoutes = new Hono<AppEnv>();
+
+/**
+ * GET /api/sessions?side=recruiter|admin -> list sessions. Admin only.
+ */
+sessionRoutes.get('/', authRequired, async (c) => {
+  const side = c.req.query('side');
+  let rows: SessionRow[];
+  if (side) {
+    const parsed = sideSchema.safeParse(side);
+    if (!parsed.success) {
+      return c.json({ error: 'side must be "recruiter" or "admin"' }, 400);
+    }
+    rows = await all<SessionRow>(
+      'SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE side = ? ORDER BY updated_at DESC',
+      [parsed.data],
+    );
+  } else {
+    rows = await all<SessionRow>(
+      'SELECT id, side, created_at, updated_at, metadata FROM sessions ORDER BY updated_at DESC',
+    );
+  }
+  return c.json({ sessions: rows });
+});
+
+/**
+ * GET /api/sessions/:id/messages -> message history for a session.
+ */
+sessionRoutes.get('/:id/messages', async (c) => {
+  const id = c.req.param('id');
+  const session = await get<SessionRow>('SELECT id FROM sessions WHERE id = ?', [id]);
+  if (!session) {
+    return c.json({ error: 'session not found' }, 404);
+  }
+  const rows = await all<MessageRow>(
+    'SELECT id, session_id, role, content, tool_calls, created_at FROM messages WHERE session_id = ? ORDER BY id ASC',
+    [id],
+  );
+  return c.json({ messages: rows });
+});
+
+/**
+ * POST /api/sessions -> create a new session. Body: { id, side, metadata? }
+ */
+sessionRoutes.post('/', async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = createSessionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'body must be { id, side: "recruiter"|"admin", metadata? }' }, 400);
+  }
+
+  const now = new Date().toISOString();
+  const existing = await get<SessionRow>('SELECT id FROM sessions WHERE id = ?', [parsed.data.id]);
+  if (existing) {
+    return c.json({ error: 'session already exists' }, 409);
+  }
+
+  const metadata = parsed.data.metadata ? JSON.stringify(parsed.data.metadata) : null;
+  await run(
+    'INSERT INTO sessions (id, side, created_at, updated_at, metadata) VALUES (?, ?, ?, ?, ?)',
+    [parsed.data.id, parsed.data.side, now, now, metadata],
+  );
+  return c.json({ id: parsed.data.id, side: parsed.data.side, created_at: now, updated_at: now });
+});
+
+/**
+ * POST /api/sessions/:id/messages -> append a message. Body: { role, content, tool_calls? }
+ */
+sessionRoutes.post('/:id/messages', async (c) => {
+  const id = c.req.param('id');
+  const session = await get<SessionRow>('SELECT id FROM sessions WHERE id = ?', [id]);
+  if (!session) {
+    return c.json({ error: 'session not found' }, 404);
+  }
+
+  const raw = await c.req.json().catch(() => null);
+  const parsed = appendMessageSchema.safeParse(raw);
+  if (!parsed.success) {
+    return c.json({ error: 'body must be { role, content, tool_calls? }' }, 400);
+  }
+
+  const now = new Date().toISOString();
+  const toolCalls =
+    parsed.data.tool_calls === undefined ? null : JSON.stringify(parsed.data.tool_calls);
+
+  const result = await run(
+    'INSERT INTO messages (session_id, role, content, tool_calls, created_at) VALUES (?, ?, ?, ?, ?)',
+    [id, parsed.data.role, parsed.data.content, toolCalls, now],
+  );
+  await run('UPDATE sessions SET updated_at = ? WHERE id = ?', [now, id]);
+
+  return c.json({ id: Number(result.lastInsertRowid), session_id: id, created_at: now });
+});
