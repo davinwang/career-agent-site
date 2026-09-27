@@ -10,6 +10,11 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.0.0",
+    "@fontsource-variable/manrope": "^5.0.0",
+    "@fontsource-variable/noto-serif-sc": "^5.0.0",
+    "@fontsource/jetbrains-mono": "^5.0.0",
+    "@fontsource/noto-sans-sc": "^5.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
