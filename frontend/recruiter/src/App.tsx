@@ -5,6 +5,7 @@ import ResumePanel from './components/ResumePanel';
 import { useResume } from './hooks/useResume';
 import { useSession } from './hooks/useSession';
 import { getUi } from './lib/i18n';
+import { useSkin } from './hooks/useSkin';
 
 /* -------------------------------------------------------------------------- */
 
@@ -50,6 +51,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
 function RecruiterPortal() {
   const { sessionId, resetSession } = useSession();
   const { data, loading, error, offline, lang, setLang, languages, reload } = useResume();
+  // Candidate-chosen skin (admin dashboard) — applies data-skin to <html>.
+  useSkin();
   const t = getUi(lang);
   const isZh = lang.toLowerCase().startsWith('zh');
 

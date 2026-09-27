@@ -16,6 +16,7 @@ import { uploadRoutes } from './api/upload.js';
 import { skillRoutes } from './api/skills.js';
 import { knowledgeRoutes } from './api/knowledge.js';
 import { projectRoutes } from './api/projects.js';
+import { settingsRoutes } from './api/settings.js';
 import { checkInput } from './guardrails/input.js';
 import { redactSourceDumps } from './guardrails/output.js';
 import { ensureSession, persistMessages, getRecentMessages } from './services/session.js';
@@ -54,6 +55,7 @@ app.route('/api/upload', uploadRoutes);
 app.route('/api/skills', skillRoutes);
 app.route('/api/knowledge', knowledgeRoutes);
 app.route('/api/projects', projectRoutes);
+app.route('/api/settings', settingsRoutes);
 
 // --- Static upload serving (admin only) --------------------------------------
 app.get('/uploads/:name', authRequired, async (c) => {

@@ -256,7 +256,20 @@ export const api = {
     });
   },
   deleteSkill(id: string): Promise<void> {
-    return request(`/api/skills/${encodeURIComponent(id)}`, { method: "DELETE" });
+    return request(`/api/skills/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Settings
+  getUiTheme(): Promise<{ skin: "classic" | "modern" | "emerald" }> {
+    return request("/api/settings/ui-theme");
+  },
+  setUiTheme(skin: "classic" | "modern" | "emerald"): Promise<{ ok: boolean; skin: string }> {
+    return request("/api/settings/ui-theme", {
+      method: "PUT",
+      body: json({ skin }),
+    });
   },
 };
 

@@ -998,6 +998,7 @@
     line-height: 0.94;
     letter-spacing: -0.022em;
   }
+
   .display-name :lang(zh),
   .display-name.zh {
     letter-spacing: 0.01em;
@@ -1055,4 +1056,159 @@
   .section-head__rule {
     transform: scaleX(1);
   }
+}
+
+/* ==========================================================================
+   SKINS — chosen by the candidate in the admin dashboard, applied as
+   `data-skin` on <html>. Each skin re-themes the design tokens for both the
+   light and dark palettes. Default (no attribute / 'classic') = Newsprint.
+   ========================================================================== */
+
+/* ---- SKIN: modern — crisp product-site look: cool whites, indigo, ----
+   ---- generous radius, soft shadows, sans-serif display.               */
+[data-skin='modern'] {
+  --c-paper: #f4f5f8;
+  --c-surface: #ffffff;
+  --c-raised: #f7f8fb;
+  --c-sunken: #eceef3;
+
+  --c-ink: #10131a;
+  --c-ink-soft: #454b59;
+  --c-ink-mute: #7b8290;
+
+  --c-rule: #dfe2ea;
+  --c-hair: #e9ebf1;
+
+  --c-accent: #4f46e5;
+  --c-accent-ink: #ffffff;
+  --c-accent-soft: #e4e2fc;
+  --c-teal: #0d9488;
+  --c-teal-soft: #d3f0ec;
+  --c-gold: #b45309;
+  --c-gold-soft: #fbe9d0;
+
+  --shadow-strength: 0.06;
+  --grain-opacity: 0;
+
+  --font-display: 'Manrope', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+}
+.dark[data-skin='modern'],
+[data-skin='modern'].dark {
+  --c-paper: #0b0d13;
+  --c-surface: #12151d;
+  --c-raised: #191d28;
+  --c-sunken: #0e1119;
+
+  --c-ink: #e7eaf2;
+  --c-ink-soft: #a8aebd;
+  --c-ink-mute: #6f7684;
+
+  --c-rule: #262b38;
+  --c-hair: #1c202b;
+
+  --c-accent: #818cf8;
+  --c-accent-ink: #0b0d13;
+  --c-accent-soft: #232449;
+  --c-teal: #2dd4bf;
+  --c-teal-soft: #10312e;
+  --c-gold: #f59e0b;
+  --c-gold-soft: #322009;
+}
+
+/* Rounded, softer chrome for the modern skin */
+[data-skin='modern'] .dossier-card,
+[data-skin='modern'] .chip,
+[data-skin='modern'] .link-badge,
+[data-skin='modern'] .composer,
+[data-skin='modern'] .send-btn,
+[data-skin='modern'] .seg,
+[data-skin='modern'] .icon-btn,
+[data-skin='modern'] .bubble--user,
+[data-skin='modern'] .bubble--bot {
+  border-radius: 12px;
+}
+[data-skin='modern'] .bubble--user {
+  border-radius: 14px 14px 4px 14px;
+}
+[data-skin='modern'] .bubble--bot {
+  border-radius: 14px 14px 14px 4px;
+}
+[data-skin='modern'] .marker-list > li::before {
+  border-radius: 99px;
+  transform: none;
+  width: 5px;
+  height: 5px;
+}
+[data-skin='modern'] .timeline-dot {
+  border-radius: 99px;
+  transform: none;
+}
+
+/* ---- SKIN: emerald — deep green executive: ivory paper, emerald ----
+   ---- accents, serif display, squared-off cards with hairline rules.  */
+[data-skin='emerald'] {
+  --c-paper: #eceee6;
+  --c-surface: #f8f9f4;
+  --c-raised: #eff1e8;
+  --c-sunken: #e3e6d9;
+
+  --c-ink: #131a15;
+  --c-ink-soft: #3f4b43;
+  --c-ink-mute: #75816f;
+
+  --c-rule: #ccd2c0;
+  --c-hair: #dde1d0;
+
+  --c-accent: #1d6b4f;
+  --c-accent-ink: #f6f8f1;
+  --c-accent-soft: #d7e8dd;
+  --c-teal: #2a6f77;
+  --c-teal-soft: #d5e6e8;
+  --c-gold: #8a6d1f;
+  --c-gold-soft: #efe7c9;
+
+  --grain-opacity: 0.18;
+  --grain-blend: multiply;
+}
+.dark[data-skin='emerald'],
+[data-skin='emerald'].dark {
+  --c-paper: #0a0f0c;
+  --c-surface: #121a15;
+  --c-raised: #18211b;
+  --c-sunken: #0e1511;
+
+  --c-ink: #e4ebe3;
+  --c-ink-soft: #a7b3a5;
+  --c-ink-mute: #6d7a6c;
+
+  --c-rule: #263028;
+  --c-hair: #1c251e;
+
+  --c-accent: #5fbd8f;
+  --c-accent-ink: #07130d;
+  --c-accent-soft: #173427;
+  --c-teal: #6cc5c9;
+  --c-teal-soft: #113032;
+  --c-gold: #d9b64c;
+  --c-gold-soft: #2d2611;
+}
+
+/* Emerald: serif display, squared corners, straight (un-rotated) markers */
+[data-skin='emerald'] {
+  --font-display: 'Noto Serif SC', 'Fraunces', ui-serif, Georgia, serif;
+}
+[data-skin='emerald'] .dossier-card,
+[data-skin='emerald'] .chip,
+[data-skin='emerald'] .link-badge,
+[data-skin='emerald'] .composer,
+[data-skin='emerald'] .send-btn,
+[data-skin='emerald'] .seg,
+[data-skin='emerald'] .icon-btn {
+  border-radius: 0;
+}
+[data-skin='emerald'] .marker-list > li::before,
+[data-skin='emerald'] .md ul > li::before,
+[data-skin='emerald'] .timeline-dot {
+  transform: none;
+  border-radius: 1px;
 }
