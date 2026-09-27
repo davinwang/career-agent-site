@@ -225,21 +225,27 @@ export function getUi(lang: string): UiStrings {
   return lang.toLowerCase().startsWith('zh') ? zh : en;
 }
 
-/** Suggested first questions, localised. */
+/**
+ * Suggested first questions, localised.
+ *
+ * Generic on purpose — these ship in the public JS bundle, so they must not
+ * leak résumé details (employers, metrics, project names). Specific starters
+ * should come from the backend once a dossier is published.
+ */
 export const SUGGESTED_PROMPTS: Record<string, string[]> = {
   zh: [
-    '他近两年独立交付的 AI 项目，技术难点分别是什么？',
-    '把 1000 只基金计算从 4-8 小时压到 3-5 分钟，具体做了哪些优化？',
-    '他在金融业务上的理解深度如何？能举几个例子吗？',
-    '如果他来带一个 8 人的架构小组，管理风格会是怎样？',
-    '简历里提到的 MCP 只读工具出口是怎么设计的？',
+    '这份档案里最值得关注的技术亮点是什么？',
+    '他的架构设计方法论是怎样的？',
+    '他在 AI 工程化方面有哪些实践经验？',
+    '他的团队管理与协作风格如何？',
+    '针对我们团队的岗位，他匹配度如何？',
   ],
   en: [
-    'What were the hardest technical problems in his recent solo AI projects?',
-    'How exactly did he cut fund metric computation from 4–8 hours to 3–5 minutes?',
-    'How deep is his financial-domain knowledge? Give concrete examples.',
-    'What would his management style look like leading an 8-person architecture team?',
-    'How is the read-only MCP tool surface in his résumé actually designed?',
+    'What are the most notable technical highlights in this dossier?',
+    'What is his approach to architecture design?',
+    'What hands-on AI engineering experience does he have?',
+    'How does he lead and collaborate with teams?',
+    'How well would he fit an opening on our team?',
   ],
 };
 
