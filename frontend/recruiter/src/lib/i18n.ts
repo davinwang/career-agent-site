@@ -81,8 +81,8 @@ const zh: UiStrings = {
     candidate: '候选人',
     available: '在业看机会',
     updated: '更新于',
-    offlineBadge: '离线预览',
-    offlineHint: '未能连接后端服务，当前展示内置示例档案。',
+    offlineBadge: '待发布',
+    offlineHint: '候选人简历尚未发布，当前展示占位内容。',
   },
   sections: {
     summary: '个人概述',
@@ -153,8 +153,8 @@ const en: UiStrings = {
     candidate: 'Candidate',
     available: 'Open to opportunities',
     updated: 'Updated',
-    offlineBadge: 'Offline preview',
-    offlineHint: 'Backend unreachable — showing the bundled sample dossier.',
+    offlineBadge: 'Pending publication',
+    offlineHint: 'The candidate dossier has not been published yet — placeholder shown.',
   },
   sections: {
     summary: 'Profile',

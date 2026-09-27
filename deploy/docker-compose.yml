@@ -9,10 +9,6 @@ services:
       - .env
     volumes:
       - ../data:/app/data
-      # The seed script resolves the legacy resume JSON through ROOT_DIR, which is
-      # "/" inside the image (compiled to /app/dist). Mount the legacy static dir
-      # read-only at that location so resume data can be seeded.
-      - ../legacy/app/public-static:/legacy/app/public-static:ro
     expose:
       - "4111"
     # node:22-slim ships neither wget nor curl, so probe the health endpoint with

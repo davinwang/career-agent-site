@@ -1,109 +1,23 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
-import { ROOT_DIR, config } from '../config.js';
+import { config } from '../config.js';
 import { run, get, closeDb } from './client.js';
 
 /**
- * Seed script:
+ * Seed script (bootstrap only):
  *  - Creates the admin user from ADMIN_USERNAME / ADMIN_PASSWORD.
- *  - Loads legacy zh resume (already canonical) and en resume (legacy shape),
- *    migrates en to the canonical schema, and inserts both into `resume`.
  *  - Inserts a few default recruiter skills.
+ *
+ * Resume data is intentionally NOT seeded. The résumé is owner content and
+ * enters the system exclusively through the admin portal (upload / agent
+ * write tools). Until then the recruiter frontend shows an anonymous
+ * placeholder — no fallback data ships in code or images.
  *
  * Run with: npm run seed
  */
 
-const LEGACY_STATIC_DIR = path.join(ROOT_DIR, 'legacy', 'app', 'public-static');
-const ZH_RESUME_FILE = path.join(LEGACY_STATIC_DIR, 'resume-data.json');
-const EN_RESUME_FILE = path.join(LEGACY_STATIC_DIR, 'resume-data.en.json');
-
-type Json = Record<string, unknown>;
-
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function readJsonFile(file: string): Json | null {
-  if (!fs.existsSync(file)) {
-    console.warn(`[seed] resume file not found, skipping: ${file}`);
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(file, 'utf-8')) as Json;
-}
-
-/** Split "Company · Role" into its two parts (role keeps any further separators). */
-function splitTitle(title: unknown): { left: string; right: string } {
-  const text = typeof title === 'string' ? title : '';
-  const idx = text.indexOf(' · ');
-  if (idx === -1) return { left: text.trim(), right: '' };
-  return { left: text.slice(0, idx).trim(), right: text.slice(idx + ' · '.length).trim() };
-}
-
-/** Migrate a legacy EN experience entry { title, meta, points } -> canonical. */
-function migrateExperience(entry: Json): Json {
-  const { left, right } = splitTitle(entry.title);
-  const out: Json = {
-    company: left,
-    role: right,
-    period: entry.meta ?? '',
-    highlights: entry.points ?? [],
-  };
-  if (entry.logo !== undefined) out.logo = entry.logo;
-  return out;
-}
-
-/** Migrate a legacy EN project entry { title, meta, points, highlights? } -> canonical. */
-function migrateProject(entry: Json): Json {
-  const { left, right } = splitTitle(entry.title);
-  const out: Json = {
-    name: left,
-    role: right,
-    period: entry.meta ?? '',
-    content: entry.points ?? [],
-    highlights: entry.highlights ?? [],
-  };
-  for (const key of ['demo_link', 'repo_link', 'open_source']) {
-    if (entry[key] !== undefined) out[key] = entry[key];
-  }
-  return out;
-}
-
-/**
- * Migrate the full legacy EN resume document into the canonical schema used by
- * the zh document. Non-transformed top-level fields are preserved as-is.
- */
-export function migrateEnResume(en: Json): Json {
-  const migrated: Json = { ...en };
-
-  if (Array.isArray(en.experience)) {
-    migrated.experience = (en.experience as Json[]).map(migrateExperience);
-  }
-
-  if (Array.isArray(en.projects)) {
-    migrated.projects = (en.projects as Json[]).map(migrateProject);
-  }
-
-  // Flat skills array -> object form { "Skills": [...] } to match zh structure.
-  if (Array.isArray(en.skills)) {
-    migrated.skills = { Skills: en.skills };
-  }
-
-  return migrated;
-}
-
-async function upsertResume(lang: string, data: Json): Promise<void> {
-  const payload = JSON.stringify(data);
-  const updated = nowIso();
-  const existing = await get('SELECT lang FROM resume WHERE lang = ?', [lang]);
-  if (existing) {
-    await run('UPDATE resume SET data = ?, updated_at = ? WHERE lang = ?', [payload, updated, lang]);
-    console.log(`[seed] updated resume (${lang})`);
-  } else {
-    await run('INSERT INTO resume (lang, data, updated_at) VALUES (?, ?, ?)', [lang, payload, updated]);
-    console.log(`[seed] inserted resume (${lang})`);
-  }
 }
 
 async function seedAdmin(): Promise<void> {
@@ -164,16 +78,9 @@ async function main(): Promise<void> {
   console.log('[seed] starting database seed...');
 
   await seedAdmin();
-
-  const zh = readJsonFile(ZH_RESUME_FILE);
-  if (zh) await upsertResume('zh', zh);
-
-  const en = readJsonFile(EN_RESUME_FILE);
-  if (en) await upsertResume('en', migrateEnResume(en));
-
   await seedSkills();
 
-  console.log('[seed] done.');
+  console.log('[seed] done. (resume data is NOT seeded — publish it via the admin portal)');
 }
 
 main()

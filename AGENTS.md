@@ -13,7 +13,7 @@ Monorepo, four containers behind nginx (`deploy/docker-compose.yml`):
 | Admin portal | `frontend/admin/` | React 19 + react-router 7 + zustand, Vite base `/admin/` | `jas-admin` |
 | Reverse proxy | `deploy/nginx/` | nginx:alpine, Docker DNS resolver 127.0.0.11 | `jas-nginx` (:8090 → 80) |
 
-Legacy v1 (Chainlit) kept read-only under `legacy/`; its `legacy/app/public-static/` is mounted read-only into the backend at `/legacy/app/public-static` because `src/db/seed.ts` reads the original resume JSON from there (path resolved via ROOT_DIR, which is `/` inside the image).
+Legacy v1 (Chainlit) lives under `legacy/` as read-only reference only — **nothing in v2 depends on it** (no mounts, no imports). Resume data enters the system exclusively via the admin portal (upload / agent write tools); with an empty database the recruiter frontend shows an anonymous placeholder (候选人/Candidate), never bundled sample data.
 
 ## Routes (nginx, `deploy/nginx/default.conf`)
 
@@ -28,7 +28,7 @@ Legacy v1 (Chainlit) kept read-only under `legacy/`; its `legacy/app/public-stat
 ## Backend layout (`backend/src/`)
 
 - `server.ts` — Hono app: routes `/api/{auth,resume,sessions,upload,skills,knowledge,projects}`, SSE chat via AG-UI, global CORS (`config.frontendOrigins`), centralized onError (never leak stacks in prod).
-- `db/` — `schema.ts` (idempotent DDL: resume, sessions, messages, knowledge, projects), `client.ts` (libSQL), `seed.ts` (first-run seeding from legacy JSON + admin creds from env).
+- `db/` — `schema.ts` (idempotent DDL: resume, sessions, messages, knowledge, projects), `client.ts` (libSQL), `seed.ts` (bootstrap only: admin creds + default skills; resume is NOT seeded — published via admin portal).
 - `mastra/` — two agents: `recruiterAgent` (read-only tools) and `adminAgent` (read+write). LibSQLStore shares the app DB file.
 - `tools/index.ts` — tool registry. **Key invariant: recruiter gets only `READ_TOOLS`; `WRITE_TOOLS` (updateResumeSection, ingestFile, addGithubRepo, analyzeProject, rememberFact, forgetFact…) are admin-only. Never give the recruiter agent write tools.**
 - `guardrails/` — input check + output redaction (source-dump redaction).

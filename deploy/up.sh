@@ -22,4 +22,6 @@ echo "  Recruiter portal: http://localhost:${EXPOSE_PORT:-8090}/"
 echo "  Admin portal:     http://localhost:${EXPOSE_PORT:-8090}/admin/"
 echo "  Backend API:      http://localhost:${EXPOSE_PORT:-8090}/api/"
 echo ""
-echo "First-time setup: run 'docker compose exec backend npm run seed:prod' to initialize the database"
+# First-time setup: run 'docker compose exec backend npm run seed:prod' (or
+# 'docker exec jas-backend node dist/db/seed.js') to create the admin user and
+# default skills. Resume data is published via the admin portal, not seeded.
