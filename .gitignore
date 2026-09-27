@@ -1,10 +1,4 @@
 
-# legacy reference project
-legacy/
-
-# sample data which can be used for testing
-sample_data/
-
 # dependencies & build output
 node_modules/
 dist/
