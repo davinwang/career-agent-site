@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, API_BASE } from "../../lib/api";
 import type { ResumeData } from "../../types/resume";
+import type { UploadOriginal } from "../../types/api";
 import ResumePreview from "../ResumePreview";
 import { Badge, Spinner } from "../ui";
 import {
@@ -19,6 +20,7 @@ interface Artifacts {
   knowledge: { id: string; filename: string; source_type: string; created_at: string; excerpt: string }[];
   projects: { id: string; name: string; repo_url: string | null; status: string; created_at: string; has_doc: number }[];
   skills: { id: string; name: string; prompt: string; enabled: boolean; priority: number }[];
+  uploads?: UploadOriginal[];
 }
 
 const GRID_CELLS = [
@@ -85,11 +87,20 @@ export function useArtifacts(refreshKey: number) {
 export default function ArtifactPanel({
   refreshKey,
   onAsk,
+  onOpenChange,
 }: {
   refreshKey: number;
   onAsk: (text: string) => void;
+  /** Called when the user closes the detail view (used by the parent strip to collapse). */
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { data, loading } = useArtifacts(refreshKey);
+  // Combine parent refreshKey (assistant tool-call turns) with local bumps
+  // (in-panel deletions) into one fetch key.
+  const [localRefresh, setLocalRefresh] = useState(0);
+  const fetchKey = refreshKey + localRefresh;
+  const { data, loading } = useArtifacts(fetchKey);
+  const bumpRefresh = () => setLocalRefresh((k) => k + 1);
+
   const [openKind, setOpenKind] = useState<CellKind | null>(null);
 
   return (
@@ -133,7 +144,7 @@ export default function ArtifactPanel({
       {/* Detail view for the opened cell */}
       {openKind && (
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-lg border p-3" style={{ borderColor: "var(--rule)" }}>
-          <Detail kind={openKind} data={data} onAsk={onAsk} onClose={() => setOpenKind(null)} />
+          <Detail kind={openKind} data={data} onAsk={onAsk} onClose={() => { setOpenKind(null); onOpenChange?.(false); }} onRefresh={bumpRefresh} />
         </div>
       )}
 
@@ -149,11 +160,13 @@ function Detail({
   data,
   onAsk,
   onClose,
+  onRefresh,
 }: {
   kind: CellKind;
   data: Artifacts | null;
   onAsk: (text: string) => void;
   onClose: () => void;
+  onRefresh: () => void;
 }) {
   const cell = GRID_CELLS.find((c) => c.kind === kind)!;
 
@@ -176,24 +189,16 @@ function Detail({
       {!data ? (
         <Spinner label="加载中…" />
       ) : kind === "resume" ? (
-        <ResumeDetail resumes={data.resumes} onAsk={onAsk} />
+        <ResumeDetail resumes={data.resumes} uploads={data.uploads ?? []} onAsk={onAsk} onChanged={onRefresh} />
       ) : kind === "knowledge" ? (
-        <ListDetail
-          items={data.knowledge.map((k) => ({
-            id: k.id,
-            title: k.filename,
-            sub: `${k.source_type} · ${new Date(k.created_at).toLocaleDateString("zh-CN")}`,
-          }))}
-          empty="还没有材料，上传 PDF / 文档 / 图片后自动入库"
-          askText="帮我整理知识库材料"
-        />
+        <KnowledgeDetail knowledge={data.knowledge} uploads={data.uploads ?? []} onChanged={onRefresh} />
       ) : kind === "projects" ? (
         <ListDetail
           items={data.projects.map((p) => ({
             id: p.id,
             title: p.name,
             sub: p.repo_url ? p.repo_url.replace(/^https?:\/\/(www\.)?github\.com\//, "") : "—",
-            badge: p.status,
+            badge: p.repo_url ? "源码" : "文档",
           }))}
           empty="还没有项目，提供 git URL 或上传项目文档开始分析"
           askText="帮我分析一个项目"
@@ -216,10 +221,14 @@ function Detail({
 
 function ResumeDetail({
   resumes,
+  uploads,
   onAsk,
+  onChanged,
 }: {
   resumes: { lang: string; name: string | null; photo: string | null }[];
+  uploads: UploadOriginal[];
   onAsk: (t: string) => void;
+  onChanged: () => void;
 }) {
   const [preview, setPreview] = useState<{ lang: string; data: ResumeData } | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -322,6 +331,153 @@ function ResumeDetail({
       >
         + 新语言版本
       </button>
+      <UploadsSection uploads={uploads} onChanged={onChanged} />
+    </div>
+  );
+}
+
+/** Uploaded originals (e.g. multiple PDF resume versions) with download/delete. */
+function UploadsSection({
+  uploads,
+  onChanged,
+}: {
+  uploads: UploadOriginal[];
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  if (uploads.length === 0) return null;
+
+  const remove = async (u: UploadOriginal) => {
+    if (!window.confirm(`删除原件「${u.original_name}」？已解析入知识库的内容会保留。`)) return;
+    setBusy(u.stored_name);
+    try {
+      await api.deleteUpload(u.stored_name);
+      onChanged();
+    } catch (err) {
+      if (err instanceof ApiError) window.alert(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="pt-2">
+      <div className="label mb-1.5 text-[0.58rem]">上传的原件 · {uploads.length}</div>
+      <div className="space-y-1.5">
+        {uploads.map((u) => (
+          <div
+            key={u.id}
+            className="flex items-center gap-2 rounded-md border px-2 py-1.5"
+            style={{ borderColor: "var(--rule)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[0.72rem] font-medium">{u.original_name}</div>
+              <div className="label text-[0.52rem]">
+                {(u.size / 1024).toFixed(0)} KB · {new Date(u.created_at).toLocaleDateString("zh-CN")}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
+              aria-label={`下载 ${u.original_name}`}
+              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+            >
+              <IconDownload width={13} height={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(u)}
+              disabled={busy === u.stored_name}
+              aria-label={`删除 ${u.original_name}`}
+              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+            >
+              {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 text-[0.56rem] text-[var(--text-muted)]">
+        删除仅移除原件文件，解析内容仍在知识库中。
+      </p>
+    </div>
+  );
+}
+
+/** Knowledge entries with original-file download + entry delete. */
+function KnowledgeDetail({
+  knowledge,
+  uploads,
+  onChanged,
+}: {
+  knowledge: { id: string; filename: string; source_type: string; created_at: string; excerpt: string }[];
+  uploads: UploadOriginal[];
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+
+  if (knowledge.length === 0 && uploads.length === 0) {
+    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">还没有材料，上传 PDF / 文档 / 图片后自动入库</div>;
+  }
+
+  // knowledge.filename usually equals the original upload name — link it to a
+  // stored original for the download button when possible.
+  const storedFor = (filename: string) =>
+    uploads.find((u) => u.original_name === filename || u.stored_name === filename);
+
+  const removeEntry = async (id: string, title: string) => {
+    if (!window.confirm(`从知识库删除「${title}」？此操作不可恢复。`)) return;
+    setBusy(id);
+    try {
+      await api.deleteKnowledge(id);
+      onChanged();
+    } catch (err) {
+      if (err instanceof ApiError) window.alert(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {knowledge.map((k) => {
+        const stored = storedFor(k.filename);
+        return (
+          <div
+            key={k.id}
+            className="flex items-center gap-2 rounded-md border px-2.5 py-2"
+            style={{ borderColor: "var(--rule)" }}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[0.8rem] font-medium">{k.filename}</div>
+              <div className="label truncate text-[0.54rem]">
+                {k.source_type} · {new Date(k.created_at).toLocaleDateString("zh-CN")}
+              </div>
+            </div>
+            {stored && (
+              <button
+                type="button"
+                onClick={() => api.downloadUpload(stored.stored_name, stored.original_name)}
+                aria-label={`下载原件 ${stored.original_name}`}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+              >
+                <IconDownload width={13} height={13} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => removeEntry(k.id, k.filename)}
+              disabled={busy === k.id}
+              aria-label={`删除 ${k.filename}`}
+              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+            >
+              {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+            </button>
+          </div>
+        );
+      })}
+      <div className="pt-1 text-center text-[0.6rem] text-[var(--text-muted)]">
+        修改请回到对话，例如「帮我整理知识库材料」
+      </div>
     </div>
   );
 }

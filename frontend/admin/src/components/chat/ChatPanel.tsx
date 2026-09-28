@@ -17,7 +17,7 @@ export default function ChatPanel() {
   const { messages, loadingHistory, streaming, error, send, stop, clear, setError } =
     useSession();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
 
   // Refresh the artifact panel whenever a tool call completes (assistant turn
   // finished) — cheap and always fresh after writes.
@@ -62,88 +62,89 @@ export default function ChatPanel() {
               清空当前视图
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setPanelOpen((v) => !v)}
-            className="label flex items-center gap-1 text-[0.6rem] hover:text-[var(--accent)] xl:hidden"
-          >
-            成果
-            <IconChevron
-              width={12}
-              height={12}
-              style={{ transform: panelOpen ? "rotate(180deg)" : "none" }}
-            />
-          </button>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4">
-        {/* Chat column */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Artifacts strip ABOVE the chat: collapsible on all widths */}
+      <div className="mb-3 shrink-0">
+        <button
+          type="button"
+          onClick={() => setArtifactsOpen((v) => !v)}
+          className="label flex w-full items-center justify-between rounded-lg border px-3 py-2 transition-colors hover:border-[var(--accent)]"
+          style={{ borderColor: "var(--rule)" }}
+          aria-expanded={artifactsOpen}
+        >
+          <span className="flex items-center gap-1.5">
+            成果 · 简历 / 材料 / 项目 / 技能卡
+          </span>
+          <IconChevron
+            width={13}
+            height={13}
+            style={{ transform: artifactsOpen ? "rotate(180deg)" : "none" }}
+          />
+        </button>
+        {artifactsOpen && (
           <div
-            ref={scrollRef}
-            className="min-h-0 flex-1 space-y-5 overflow-y-auto rounded-lg border px-3 py-4 sm:px-5"
+            className="mt-2 max-h-[46vh] overflow-y-auto rounded-lg border p-3"
             style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
           >
-            {error && (
-              <div className="mb-2">
-                <ErrorNote message={error} />
-              </div>
-            )}
-
-            {loadingHistory ? (
-              <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
-                <span className="label">加载历史消息…</span>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-5">
-                <EmptyState
-                  icon={<IconChat width={40} height={40} />}
-                  title="和你的求职导师聊聊"
-                  hint="上传简历、补充材料、分析项目、规划转型 —— 一切通过对话完成，成果在右侧展示。"
-                />
-                <div className="flex w-full max-w-md flex-col gap-2">
-                  {SUGGESTIONS.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => send(s)}
-                      className="rounded-md border px-3 py-2 text-left text-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                      style={{ borderColor: "var(--rule)" }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              messages.map((m) => <MessageBubble key={m.id} message={m} />)
-            )}
+            <ArtifactPanel refreshKey={refreshKey} onAsk={send} onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }} />
           </div>
+        )}
+      </div>
 
-          <div className="mt-3 flex items-end gap-2">
-            <div className="flex-1">
-              <ChatInput onSend={send} onAttach={handleAttach} busy={streaming} />
+      {/* Chat column */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto rounded-lg border px-3 py-4 sm:px-5"
+          style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
+        >
+          {error && (
+            <div className="mb-2">
+              <ErrorNote message={error} />
             </div>
-            {streaming && (
-              <button type="button" onClick={stop} className="btn shrink-0">
-                停止
-              </button>
-            )}
-          </div>
+          )}
+
+          {loadingHistory ? (
+            <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
+              <span className="label">加载历史消息…</span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-5">
+              <EmptyState
+                icon={<IconChat width={40} height={40} />}
+                title="和你的求职导师聊聊"
+                hint="上传简历、补充材料、分析项目、规划转型 —— 一切通过对话完成，成果在上方「成果」区展示。"
+              />
+              <div className="flex w-full max-w-md flex-col gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => send(s)}
+                    className="rounded-md border px-3 py-2 text-left text-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                    style={{ borderColor: "var(--rule)" }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            messages.map((m) => <MessageBubble key={m.id} message={m} />)
+          )}
         </div>
 
-        {/* Artifact column: visible ≥xl always, toggleable below */}
-        <div
-          className={`min-h-0 shrink-0 ${panelOpen ? "block" : "hidden"} xl:block`}
-          style={{ width: "min(20rem, 30%)" }}
-        >
-          <div
-            className="h-full rounded-lg border p-3"
-            style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
-          >
-            <ArtifactPanel refreshKey={refreshKey} onAsk={send} />
+        <div className="mt-3 flex items-end gap-2">
+          <div className="flex-1">
+            <ChatInput onSend={send} onAttach={handleAttach} busy={streaming} />
           </div>
+          {streaming && (
+            <button type="button" onClick={stop} className="btn shrink-0">
+              停止
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -62,7 +62,7 @@ app.route('/api/settings', settingsRoutes);
 // knowledge files, projects, skills. All read-only; writes happen via the
 // admin agent's tools during conversation.
 app.get('/api/artifacts', authRequired, async (c) => {
-  const [langs, know, proj, skills] = await Promise.all([
+  const [langs, know, proj, skills, uploads] = await Promise.all([
     all<{ lang: string }>('SELECT lang FROM resume'),
     all<{ id: string; filename: string; source_type: string; created_at: string; metadata: string | null; excerpt: string }>(
       "SELECT id, filename, source_type, created_at, metadata, substr(content, 1, 300) AS excerpt FROM knowledge ORDER BY created_at DESC",
@@ -74,6 +74,9 @@ app.get('/api/artifacts', authRequired, async (c) => {
     ),
     all<{ id: string; name: string; prompt: string; enabled: number; priority: number }>(
       'SELECT id, name, prompt, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
+    ),
+    all<{ id: string; stored_name: string; original_name: string; ext: string; size: number; created_at: string }>(
+      'SELECT id, stored_name, original_name, ext, size, created_at FROM uploads ORDER BY created_at DESC',
     ),
   ]);
 
@@ -100,6 +103,7 @@ app.get('/api/artifacts', authRequired, async (c) => {
     knowledge: know,
     projects: proj,
     skills: skills.map((s) => ({ ...s, enabled: !!s.enabled })),
+    uploads,
   });
 });
 
@@ -212,7 +216,18 @@ app.post('/ag-ui/recruiter', async (c) => {
 
   // Compose instructions with skills
   const skillsPrompt = await loadSkillsPrompt();
-  const instructions = `${RECRUITER_SYSTEM_PROMPT}${skillsPrompt}`;
+  // Anti-hallucination guard: when no resume/knowledge has been published, the
+  // model tends to invent plausible-sounding candidate details. Inject an
+  // explicit empty-dossier directive so it declines honestly instead.
+  const [resumeCount, knowledgeCount] = await Promise.all([
+    get<{ c: number }>('SELECT COUNT(*) AS c FROM resume'),
+    get<{ c: number }>('SELECT COUNT(*) AS c FROM knowledge'),
+  ]);
+  const emptyDossierPrompt =
+    (resumeCount?.c ?? 0) === 0 && (knowledgeCount?.c ?? 0) === 0
+      ? `\n\n## ⚠️ 档案为空（重要）\n当前系统中没有任何已发布的简历或知识库材料。你**没有**关于候选人的任何真实信息——绝对禁止编造工作经历、项目、技术栈、量化成果等内容。对于询问候选人经历的问题，如实回答："该候选人的档案尚未发布，暂时无法提供具体信息，请稍后再来查看。"不要猜测、不要示意你有隐藏的简历内容。`
+      : '';
+  const instructions = `${RECRUITER_SYSTEM_PROMPT}${skillsPrompt}${emptyDossierPrompt}`;
 
   // Build messages array for the agent
   const agentMessages = [

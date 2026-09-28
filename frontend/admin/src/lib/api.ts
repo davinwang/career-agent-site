@@ -5,6 +5,7 @@ import type {
   Project,
   Skill,
   UploadResult,
+  UploadOriginal,
   ResumeEnvelope,
   ProjectDoc,
 } from "../types/api";
@@ -176,6 +177,24 @@ export const api = {
   },
 
   // Upload
+  listUploads(): Promise<{ uploads: UploadOriginal[] }> {
+    return request("/api/upload");
+  },
+  async downloadUpload(storedName: string, originalName: string): Promise<void> {
+    const blob = await request<Blob>(
+      `/api/upload/${encodeURIComponent(storedName)}`,
+      { raw: true },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = originalName;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  deleteUpload(storedName: string): Promise<void> {
+    return request(`/api/upload/${encodeURIComponent(storedName)}`, { method: "DELETE" });
+  },
   uploadFile(
     file: File,
     onProgress?: (pct: number) => void,

@@ -160,6 +160,8 @@ export const ingestFile = createTool({
       // Store in knowledge table
       const id = uuidv4();
       const now = new Date().toISOString();
+      // Keep the stored original's name so the UI can link/download it.
+      const storedName = path.basename(filePath);
 
       // Check if file already exists (by filename), update if so
       const existing = await get<{ id: string }>(
@@ -170,14 +172,14 @@ export const ingestFile = createTool({
       if (existing) {
         await run(
           'UPDATE knowledge SET content = ?, chunks = ?, source_type = ?, metadata = ?, created_at = ? WHERE id = ?',
-          [text.slice(0, 50000), JSON.stringify(chunks), sourceType, JSON.stringify({ ext, size: stat.size }), now, existing.id],
+          [text.slice(0, 50000), JSON.stringify(chunks), sourceType, JSON.stringify({ ext, size: stat.size, stored_name: storedName }), now, existing.id],
         );
         return { ok: true, id: existing.id, filename, chunks: chunks.length, updated: true };
       }
 
       await run(
         'INSERT INTO knowledge (id, filename, source_type, content, chunks, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [id, filename, sourceType, text.slice(0, 50000), JSON.stringify(chunks), JSON.stringify({ ext, size: stat.size }), now],
+        [id, filename, sourceType, text.slice(0, 50000), JSON.stringify(chunks), JSON.stringify({ ext, size: stat.size, stored_name: storedName }), now],
       );
 
       return { ok: true, id, filename, chunks: chunks.length };

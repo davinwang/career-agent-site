@@ -52,6 +52,16 @@ export interface Skill {
   created_at: string;
 }
 
+/** An uploaded original file (version-managed, downloadable/deletable). */
+export interface UploadOriginal {
+  id: string;
+  stored_name: string;
+  original_name: string;
+  ext: string;
+  size: number;
+  created_at: string;
+}
+
 export interface UploadResult {
   ok: boolean;
   original_name: string;

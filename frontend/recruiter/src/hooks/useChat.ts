@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  API_BASE,
   createSseParser,
   ensureSession,
   fetchSessionMessages,
@@ -22,16 +21,6 @@ export interface UseChatResult {
   send: (text: string) => void;
   stop: () => void;
   clear: () => void;
-}
-
-/** Best-effort persistence; never blocks the UI. */
-function archive(sessionId: string, role: 'user' | 'assistant', content: string): void {
-  if (!sessionId || !content.trim()) return;
-  fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Session-Id': sessionId },
-    body: JSON.stringify({ role, content }),
-  }).catch(() => undefined);
 }
 
 /**
@@ -172,7 +161,6 @@ export function useChat(sessionId: string): UseChatResult {
       }));
 
       void (async () => {
-        archive(sessionId, 'user', text);
         let produced = '';
         let failed: string | null = null;
 
@@ -318,7 +306,7 @@ export function useChat(sessionId: string): UseChatResult {
               setSendError(failed);
             }
 
-            if (finalText) archive(sessionId, 'assistant', finalText);
+
             setStatus('idle');
           }
         }
