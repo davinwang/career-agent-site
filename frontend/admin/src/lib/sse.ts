@@ -31,6 +31,9 @@ export interface SSEEvent {
 function parseFrame(line: string): SSEEvent | null {
   const trimmed = line.trim();
   if (!trimmed || trimmed.startsWith(":")) return null; // comment / heartbeat
+  // SSE `event:` lines name the frame type; the backend always puts the real
+  // type inside the JSON `data:` payload, so the line itself is not content.
+  if (trimmed.startsWith("event:")) return null;
 
   let payload = trimmed;
   if (payload.startsWith("data:")) {
@@ -43,7 +46,11 @@ function parseFrame(line: string): SSEEvent | null {
     return { ...(obj as object), raw: obj } as SSEEvent;
   } catch {
     // Non-JSON data frame — surface the raw text as a content delta.
-    return { type: "TEXT_MESSAGE_CONTENT", delta: payload };
+    // Guard: only *data* lines may become deltas, never bare protocol lines,
+    // otherwise raw SSE framing ("event: message") leaks into the bubble.
+    return trimmed.startsWith("data:")
+      ? { type: "TEXT_MESSAGE_CONTENT", delta: payload }
+      : null;
   }
 }
 
