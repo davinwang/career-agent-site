@@ -312,8 +312,11 @@ export function ChatPanel({
                   className="prompt-card group animate-[pop-in_0.45s_cubic-bezier(0.16,1,0.3,1)_both]"
                   style={{ animationDelay: `${180 + i * 70}ms` }}
                   onClick={() => {
+                    // Fill the composer instead of sending: suggested prompts
+                    // may need attachments (e.g. uploading the old resume),
+                    // so let the visitor review and edit before sending.
+                    setDraft(p);
                     setPinned(true);
-                    send(p);
                   }}
                 >
                   <span className="sys-num shrink-0 pt-[3px]">{String(i + 1).padStart(2, '0')}</span>
