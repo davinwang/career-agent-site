@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./stores/auth";
 import { UNAUTHORIZED_EVENT } from "./lib/api";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -13,10 +7,6 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
-import Resume from "./pages/Resume";
-import Upload from "./pages/Upload";
-import Projects from "./pages/Projects";
-import Skills from "./pages/Skills";
 import Sessions from "./pages/Sessions";
 
 /** Keep the auth store in sync when the API layer detects a 401. */
@@ -60,11 +50,12 @@ export default function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="chat" element={<Chat />} />
-          <Route path="resume" element={<Resume />} />
-          <Route path="upload" element={<Upload />} />
-          <Route path="projects" element={<Projects />} />
-          <Route path="skills" element={<Skills />} />
           <Route path="sessions" element={<Sessions />} />
+          {/* Legacy form pages removed — redirect to the agent chat workbench. */}
+          <Route path="resume" element={<Navigate to="/chat" replace />} />
+          <Route path="upload" element={<Navigate to="/chat" replace />} />
+          <Route path="projects" element={<Navigate to="/chat" replace />} />
+          <Route path="skills" element={<Navigate to="/chat" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

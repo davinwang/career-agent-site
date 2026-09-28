@@ -45,6 +45,8 @@ export interface ResumeData {
   /** category label -> skill chips */
   skills: Record<string, string[]>;
   education: ResumeEducation[];
+  /** optional public photo URL (e.g. /uploads/xxx.png) */
+  photo?: string;
 }
 
 /** Payload returned by `GET /api/resume/:lang`. */

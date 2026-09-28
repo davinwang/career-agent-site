@@ -2,10 +2,6 @@ import { NavLink } from "react-router-dom";
 import { useUi } from "../stores/ui";
 import {
   IconChat,
-  IconResume,
-  IconUpload,
-  IconProjects,
-  IconSkills,
   IconSessions,
   IconDashboard,
 } from "./icons";
@@ -20,11 +16,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/", label: "概览", hint: "Dashboard", Icon: IconDashboard },
-  { to: "/chat", label: "对话", hint: "Agent Chat", Icon: IconChat },
-  { to: "/resume", label: "简历", hint: "Resume", Icon: IconResume },
-  { to: "/upload", label: "上传", hint: "Upload", Icon: IconUpload },
-  { to: "/projects", label: "项目", hint: "Projects", Icon: IconProjects },
-  { to: "/skills", label: "提示词", hint: "Skills", Icon: IconSkills },
+  { to: "/chat", label: "助手", hint: "Agent Chat", Icon: IconChat },
   { to: "/sessions", label: "会话", hint: "Sessions", Icon: IconSessions },
 ];
 

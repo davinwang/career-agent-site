@@ -164,9 +164,9 @@ export default function Dashboard() {
   }, {});
 
   const tiles = [
-    { label: "简历语言", value: stats.languages.length || "—", sub: stats.languages.join(" / ") || "暂无", Icon: IconResume, to: "/resume" },
-    { label: "知识库文档", value: stats.knowledge.length, sub: "已入库文件", Icon: IconUpload, to: "/upload" },
-    { label: "项目", value: stats.projects.length, sub: `${projByStatus.done ?? 0} 已分析`, Icon: IconProjects, to: "/projects" },
+    { label: "简历语言", value: stats.languages.length || "—", sub: stats.languages.join(" / ") || "暂无", Icon: IconResume, to: "/chat" },
+    { label: "知识库文档", value: stats.knowledge.length, sub: "已入库文件", Icon: IconUpload, to: "/chat" },
+    { label: "项目", value: stats.projects.length, sub: `${projByStatus.done ?? 0} 已分析`, Icon: IconProjects, to: "/chat" },
     { label: "猎头会话", value: stats.sessions.length, sub: "累计对话", Icon: IconSessions, to: "/sessions" },
   ];
 
@@ -208,9 +208,9 @@ export default function Dashboard() {
           <SectionHead title="快捷操作" en="Quick actions" />
           <div className="grid gap-3 sm:grid-cols-3">
             {[
-              { to: "/upload", label: "上传文档", Icon: IconUpload },
-              { to: "/projects", label: "添加项目", Icon: IconProjects },
-              { to: "/resume", label: "查看简历", Icon: IconResume },
+              { to: "/chat", label: "上传文档", Icon: IconUpload },
+              { to: "/chat", label: "添加项目", Icon: IconProjects },
+              { to: "/chat", label: "查看简历", Icon: IconResume },
             ].map((a, i) => (
               <Link key={a.to} to={a.to} className="rise" style={{ animationDelay: `${i * 60}ms` }}>
                 <Card className="flex flex-col items-center gap-2 p-5 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]">

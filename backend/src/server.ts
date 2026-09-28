@@ -7,7 +7,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from './config.js';
-import { initDb, closeDb } from './db/client.js';
+import { initDb, closeDb, get, all } from './db/client.js';
 import { getMastra } from './mastra/index.js';
 import { authRoutes, authRequired, verifyToken, type AppEnv } from './api/auth.js';
 import { resumeRoutes } from './api/resume.js';
@@ -57,10 +57,77 @@ app.route('/api/knowledge', knowledgeRoutes);
 app.route('/api/projects', projectRoutes);
 app.route('/api/settings', settingsRoutes);
 
-// --- Static upload serving (admin only) --------------------------------------
-app.get('/uploads/:name', authRequired, async (c) => {
+// --- Artifacts: everything produced through conversation ----------------------
+// One aggregated view for the chat-page nine-grid: resume languages + photo,
+// knowledge files, projects, skills. All read-only; writes happen via the
+// admin agent's tools during conversation.
+app.get('/api/artifacts', authRequired, async (c) => {
+  const [langs, know, proj, skills] = await Promise.all([
+    all<{ lang: string }>('SELECT lang FROM resume'),
+    all<{ id: string; filename: string; source_type: string; created_at: string; metadata: string | null; excerpt: string }>(
+      "SELECT id, filename, source_type, created_at, metadata, substr(content, 1, 300) AS excerpt FROM knowledge ORDER BY created_at DESC",
+    ),
+    all<{ id: string; name: string; repo_url: string | null; status: string; created_at: string; has_doc: number }>(
+      `SELECT p.id, p.name, p.repo_url, p.status, p.created_at,
+              CASE WHEN p.doc IS NULL OR p.doc = '' THEN 0 ELSE 1 END AS has_doc
+       FROM projects p ORDER BY p.created_at DESC`,
+    ),
+    all<{ id: string; name: string; prompt: string; enabled: number; priority: number }>(
+      'SELECT id, name, prompt, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
+    ),
+  ]);
+
+  // Pull photo + name from each language's resume blob (if present).
+  const resumeMeta = await Promise.all(
+    langs.map(async (row) => {
+      try {
+        const full = await get<{ data: string }>('SELECT data FROM resume WHERE lang = ?', [row.lang]);
+        const parsed = full ? (JSON.parse(full.data) as Record<string, unknown>) : {};
+        return {
+          lang: row.lang,
+          name: typeof parsed.name === 'string' ? parsed.name : null,
+          photo: typeof parsed.photo === 'string' ? parsed.photo : null,
+          updated_at: null,
+        };
+      } catch {
+        return { lang: row.lang, name: null, photo: null, updated_at: null };
+      }
+    }),
+  );
+
+  return c.json({
+    resumes: resumeMeta,
+    knowledge: know,
+    projects: proj,
+    skills: skills.map((s) => ({ ...s, enabled: !!s.enabled })),
+  });
+});
+
+// --- Static upload serving ---------------------------------------------------
+// Images are PUBLIC (the recruiter-facing resume shows photo/company logos);
+// every other upload stays admin-only (authRequired).
+const IMAGE_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
+
+app.get('/uploads/:name', async (c) => {
   // basename() neutralizes any path-traversal attempts in the param.
   const safeName = path.basename(c.req.param('name'));
+  const ext = path.extname(safeName).toLowerCase();
+  const mime = IMAGE_MIME[ext];
+
+  // Non-image uploads require admin auth.
+  if (!mime) {
+    const username = verifyToken(c.req.header('Authorization'));
+    if (!username) {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
+  }
+
   const filePath = path.join(config.uploadDir, safeName);
   try {
     const data = await fs.readFile(filePath);
@@ -68,8 +135,9 @@ app.get('/uploads/:name', authRequired, async (c) => {
     // memory pool, so `data.buffer` could expose unrelated bytes.
     const bytes = new Uint8Array(data);
     return c.body(bytes.buffer as ArrayBuffer, 200, {
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': mime ?? 'application/octet-stream',
       'Content-Disposition': `inline; filename="${safeName}"`,
+      'Cache-Control': mime ? 'public, max-age=86400' : 'no-store',
     });
   } catch {
     return c.json({ error: 'file not found' }, 404);

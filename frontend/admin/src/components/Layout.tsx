@@ -9,11 +9,7 @@ import { IconMenu, IconClose, IconLogout, IconChevron } from "./icons";
 
 const TITLES: Record<string, { zh: string; en: string }> = {
   "/": { zh: "概览", en: "Dashboard" },
-  "/chat": { zh: "对话", en: "Agent Chat" },
-  "/resume": { zh: "简历", en: "Resume" },
-  "/upload": { zh: "上传", en: "Knowledge Upload" },
-  "/projects": { zh: "项目", en: "Projects" },
-  "/skills": { zh: "提示词", en: "Skills & Prompts" },
+  "/chat": { zh: "助手", en: "Career Mentor" },
   "/sessions": { zh: "会话", en: "Recruiter Sessions" },
 };
 

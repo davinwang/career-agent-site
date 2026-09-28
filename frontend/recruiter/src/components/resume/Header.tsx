@@ -58,6 +58,14 @@ export function Header({ data, lang, t, stamp }: Props) {
 
         {/* ── name ───────────────────────────────────────────────────────── */}
         <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-4">
+          {data.photo ? (
+            <img
+              src={data.photo.startsWith('http') ? data.photo : data.photo}
+              alt={data.name}
+              className="h-20 w-20 shrink-0 rounded-lg border border-rule object-cover sm:h-24 sm:w-24"
+              style={vars({ '--i': 1 })}
+            />
+          ) : null}
           <div className="min-w-0 flex-1" style={vars({ '--i': 1 })}>
             <h1
               className={`display-name m-0 text-[clamp(2.6rem,7.2vw,4.6rem)] text-ink ${isZh ? 'zh' : ''}`}

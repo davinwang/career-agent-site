@@ -210,6 +210,7 @@ export function normalizeResume(raw: unknown): ResumeData {
     projects: normalizeProjects(src.projects),
     skills: normalizeSkills(src.skills),
     education: normalizeEducation(src.education),
+    photo: str(src.photo) || undefined,
   };
 }
 

@@ -44,18 +44,6 @@ export default function ChatInput({
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   };
 
-  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !onAttach) return;
-    setAttaching(true);
-    try {
-      await onAttach(file);
-    } finally {
-      setAttaching(false);
-    }
-  };
-
   return (
     <div
       className="flex items-end gap-2 rounded-lg border p-2 transition-colors focus-within:border-[var(--accent)]"
@@ -63,7 +51,24 @@ export default function ChatInput({
     >
       {onAttach && (
         <>
-          <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept=".pdf,.docx,.doc,.txt,.md,.json,.zip,.png,.jpg,.jpeg,.webp,.gif"
+            className="hidden"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files ?? []);
+              e.target.value = "";
+              if (files.length === 0 || !onAttach) return;
+              setAttaching(true);
+              try {
+                for (const f of files) await onAttach(f);
+              } finally {
+                setAttaching(false);
+              }
+            }}
+          />
           <button
             type="button"
             onClick={() => fileRef.current?.click()}

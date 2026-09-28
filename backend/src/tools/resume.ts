@@ -47,8 +47,8 @@ export const updateResumeSection = createTool({
   inputSchema: z.object({
     lang: z.string().default('zh').describe('Language code: zh, en, etc.'),
     section: z
-      .enum(['experience', 'projects', 'skills', 'education', 'summary', 'status', 'tags', 'name'])
-      .describe('Which resume section to update'),
+      .enum(['experience', 'projects', 'skills', 'education', 'summary', 'status', 'tags', 'name', 'photo'])
+      .describe('Which resume section to update. "photo" takes a public URL path like /uploads/xxx.png'),
     data: z.unknown().describe('New data for the section (type depends on section)'),
   }),
   execute: async (context) => {

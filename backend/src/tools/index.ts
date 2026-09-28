@@ -13,12 +13,14 @@ import { getFullResume, updateResumeSection } from './resume.js';
 import { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
 import { addGithubRepo, analyzeProject, getProjectDoc, listProjects } from './projects.js';
 import { rememberFact, recallFacts, forgetFact } from './memory.js';
+import { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 
 // Re-export individual tools for direct use if needed
 export { getFullResume, updateResumeSection } from './resume.js';
 export { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
 export { addGithubRepo, analyzeProject, getProjectDoc, listProjects } from './projects.js';
 export { rememberFact, recallFacts, forgetFact } from './memory.js';
+export { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 
 /** Read-only tools available to BOTH agents. */
 export const READ_TOOLS = {
@@ -38,10 +40,13 @@ export const WRITE_TOOLS = {
   getProjectDoc,
   rememberFact,
   forgetFact,
+  createSkill,
+  updateSkill,
+  deleteSkill,
 };
 
 /** Tool set assembled for the recruiter (read-only) agent. */
 export const recruiterTools = { ...READ_TOOLS };
 
 /** Tool set assembled for the admin (full-access) agent. */
-export const adminTools = { ...READ_TOOLS, ...WRITE_TOOLS };
+export const adminTools = { ...READ_TOOLS, ...WRITE_TOOLS, listSkills };

@@ -271,6 +271,11 @@ export const api = {
       body: json({ skin }),
     });
   },
+
+  // Artifacts (chat-page nine-grid aggregate)
+  getArtifacts(): Promise<unknown> {
+    return request("/api/artifacts");
+  },
 };
 
 export { UNAUTHORIZED_EVENT };

@@ -56,5 +56,9 @@ export const config = {
 
   // Upload constraints
   maxUploadBytes: 50 * 1024 * 1024,
-  allowedUploadExtensions: ['.pdf', '.docx', '.doc', '.txt', '.md', '.json', '.zip'],
+  allowedUploadExtensions: [
+    '.pdf', '.docx', '.doc', '.txt', '.md', '.json', '.zip',
+    '.png', '.jpg', '.jpeg', '.webp', '.gif',
+  ],
+  imageExtensions: ['.png', '.jpg', '.jpeg', '.webp', '.gif'],
 } as const;
