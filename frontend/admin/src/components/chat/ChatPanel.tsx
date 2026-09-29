@@ -5,7 +5,7 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import ArtifactPanel from "./ArtifactPanel";
 import { ErrorNote, EmptyState } from "../ui";
-import { IconChat, IconChevron } from "../icons";
+import { IconChat, IconChevron, IconResume } from "../icons";
 
 const SUGGESTIONS = [
   "我有一份旧简历，先给你看看哪里需要更新",
@@ -47,7 +47,10 @@ export default function ChatPanel() {
     send, stop, switchSession, newSession, setError,
   } = useSession();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [artifactsOpen, setArtifactsOpen] = useState(false);
+  // Wide screens (PC): artifact drawer expanded by default; mobile: collapsed.
+  const [artifactsOpen, setArtifactsOpen] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
 
   // Session list dropdown state.
   const [listOpen, setListOpen] = useState(false);
@@ -222,19 +225,29 @@ export default function ChatPanel() {
         </div>
       </div>
 
-      {/* Artifacts strip ABOVE the chat: collapsible on all widths */}
+      {/* Artifact drawer ABOVE the chat: PC default-open, mobile default-closed */}
       <div className="mb-3 shrink-0">
         <button
           type="button"
           onClick={() => setArtifactsOpen((v) => !v)}
-          className="label flex w-full items-center justify-between rounded-lg border px-3 py-2 transition-colors hover:border-[var(--accent)]"
-          style={{ borderColor: "var(--rule)" }}
+          className="label flex w-full items-center gap-2 rounded-lg border px-3 py-2 transition-colors hover:border-[var(--accent)]"
+          style={{ borderColor: "var(--rule)", background: artifactsOpen ? "color-mix(in srgb, var(--accent-soft) 45%, transparent)" : undefined }}
           aria-expanded={artifactsOpen}
+          aria-controls="artifact-drawer"
         >
-          <span className="flex items-center gap-1.5">
-            成果 · 简历 / 材料 / 项目 / 技能卡
+          <span
+            className="grid h-5 w-5 shrink-0 place-items-center rounded"
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            aria-hidden
+          >
+            <IconResume width={12} height={12} />
+          </span>
+          <span>对话产出 · 归档</span>
+          <span className="hidden truncate text-[0.56rem] font-normal opacity-70 md:inline">
+            简历、材料、项目、技能卡都存放在这里
           </span>
           <IconChevron
+            className="ml-auto shrink-0"
             width={13}
             height={13}
             style={{ transform: artifactsOpen ? "rotate(180deg)" : "none" }}
@@ -242,6 +255,7 @@ export default function ChatPanel() {
         </button>
         {artifactsOpen && (
           <div
+            id="artifact-drawer"
             className="mt-2 max-h-[46vh] overflow-y-auto rounded-lg border p-3"
             style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
           >
@@ -272,7 +286,7 @@ export default function ChatPanel() {
               <EmptyState
                 icon={<IconChat width={40} height={40} />}
                 title="和你的求职导师聊聊"
-                hint="上传简历、补充材料、分析项目、规划转型 —— 一切通过对话完成，成果在上方「成果」区展示。"
+                hint="上传简历、补充材料、分析项目、规划转型 —— 一切通过对话完成，产出在上方的「对话产出 · 归档」里。"
               />
               <div className="flex w-full max-w-md flex-col gap-2">
                 {SUGGESTIONS.map((s) => (

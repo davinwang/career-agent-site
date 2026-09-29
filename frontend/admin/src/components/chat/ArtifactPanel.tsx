@@ -106,7 +106,7 @@ export default function ArtifactPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-3 flex items-center justify-between">
-        <div className="label text-[0.62rem]">成果 · Artifacts</div>
+        <div className="label text-[0.62rem]">归档内容 · Archives</div>
         {loading && <IconSpinner width={14} height={14} />}
       </div>
 
