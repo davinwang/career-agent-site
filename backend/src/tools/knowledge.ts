@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { get, all, run } from '../db/client.js';
+import { config } from '../config.js';
 
 interface KnowledgeRow {
   id: string;
@@ -126,9 +127,34 @@ export const ingestFile = createTool({
   }),
   execute: async (context) => {
     try {
-      const { filePath, filename, sourceType = 'upload' } = context;
+      const { filePath: rawPath, filename, sourceType = 'upload' } = context;
 
-      // Verify file exists
+      // Resolve the path: agents typically pass a bare stored name
+      // ("abc-123.zip") or "/uploads/abc-123.zip" as surfaced in chat, while
+      // files actually live in UPLOAD_DIR. Try candidates in order.
+      const candidates = [rawPath];
+      if (!path.isAbsolute(rawPath)) {
+        candidates.push(path.resolve(config.uploadDir, rawPath));
+      } else {
+        candidates.push(path.join(config.uploadDir, path.basename(rawPath)));
+      }
+      let filePath: string | null = null;
+      for (const cand of candidates) {
+        try {
+          const s = await fs.stat(cand);
+          if (s.isFile()) {
+            filePath = cand;
+            break;
+          }
+        } catch {
+          /* try next candidate */
+        }
+      }
+      if (!filePath) {
+        return {
+          error: `File not found: ${rawPath}. Tried: ${candidates.join(', ')}. Hint: upload attachments are stored in ${config.uploadDir} under their stored UUID name — call listUploadedFiles to see what exists.`,
+        };
+      }
       const stat = await fs.stat(filePath);
       if (!stat.isFile()) {
         return { error: `Path is not a file: ${filePath}` };
@@ -137,7 +163,9 @@ export const ingestFile = createTool({
       const ext = path.extname(filePath).toLowerCase();
       let text: string;
 
-      if (ext === '.pdf') {
+      if (ext === '.zip') {
+        text = await extractZipSources(filePath);
+      } else if (ext === '.pdf') {
         text = await extractPdf(filePath);
       } else if (ext === '.docx' || ext === '.doc') {
         text = await extractDocx(filePath);
@@ -230,6 +258,67 @@ function excerptAround(text: string, tokens: string[], windowSize = 600, maxWind
     lastEnd = to;
   }
   return windows.join('\n……\n');
+}
+
+/**
+ * Extract text from a source-code zip (e.g. a GitHub "Download ZIP" bundle).
+ * Walks all entries, keeps text/code files (skips binaries, lockfiles, assets),
+ * caps per-file and total size, and prefixes each file with its path so the
+ * agent can reason about project structure.
+ */
+async function extractZipSources(zipPath: string): Promise<string> {
+  const AdmZip = (await import('adm-zip')).default;
+  const zip = new AdmZip(zipPath);
+  const entries = zip.getEntries();
+
+  const SKIP_DIR_PARTS = ['node_modules/', '.git/', 'dist/', 'build/', 'coverage/', '.next/', '__macosx/'];
+  const SKIP_EXT = new Set([
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.svg', '.woff', '.woff2',
+    '.ttf', '.otf', '.eot', '.mp4', '.mp3', '.wav', '.pdf', '.zip', '.jar',
+    '.class', '.so', '.dylib', '.exe', '.dll', '.bin', '.wasm',
+  ]);
+  const SKIP_NAME = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', '.ds_store']);
+  const TEXT_EXT = new Set([
+    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.rs', '.go', '.java',
+    '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.cs', '.rb', '.php', '.sh',
+    '.bash', '.sql', '.json', '.md', '.txt', '.yml', '.yaml', '.toml', '.ini',
+    '.cfg', '.html', '.css', '.scss', '.vue', '.svelte', '.graphql', '.proto',
+    '.env', '.gitignore', '.dockerfile', '',
+  ]);
+
+  const parts: string[] = [];
+  let total = 0;
+  const MAX_TOTAL = 400_000;
+  const MAX_PER_FILE = 20_000;
+  let kept = 0;
+  let skipped = 0;
+
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+    const entryName = entry.entryName;
+    const lower = entryName.toLowerCase();
+    if (SKIP_DIR_PARTS.some((d) => lower.includes(d))) { skipped++; continue; }
+    const ext = lower.endsWith('.dockerfile') ? '.dockerfile' : path.extname(lower);
+    if (SKIP_EXT.has(ext) || SKIP_NAME.has(path.basename(lower))) { skipped++; continue; }
+    if (!TEXT_EXT.has(ext)) { skipped++; continue; }
+
+    const content = entry.getData().toString('utf8');
+    const trimmed = content.length > MAX_PER_FILE
+      ? content.slice(0, MAX_PER_FILE) + '\n… (truncated)'
+      : content;
+    if (total + trimmed.length > MAX_TOTAL) {
+      parts.push(`[truncated: total size cap reached]`);
+      break;
+    }
+    total += trimmed.length;
+    kept++;
+    parts.push(`===== ${entryName} =====\n${trimmed}`);
+  }
+
+  if (parts.length === 0) {
+    throw new Error('No text files found in the zip archive');
+  }
+  return `Source bundle: ${path.basename(zipPath)} (${kept} files indexed, ${skipped} binaries/lockfiles/assets skipped)\n\n${parts.join('\n\n')}`;
 }
 
 /**
