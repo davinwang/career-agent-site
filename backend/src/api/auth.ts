@@ -5,6 +5,16 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { get } from '../db/client.js';
+import {
+  oauthConfigured, oauthAuthorizeUrl, oauthExchange,
+  verifyToken as verifyGithubToken, saveOAuthToken,
+} from '../services/github.js';
+import { run } from '../db/client.js';
+
+/** Remove only the OAuth binding; a hosted PAT remains effective. */
+export async function clearOAuthToken(): Promise<void> {
+  await run("DELETE FROM settings WHERE key IN ('github_oauth_token', 'github_oauth_user')");
+}
 
 /** Shared Hono environment: authenticated requests carry `username`. */
 export type AppEnv = {
@@ -88,3 +98,58 @@ authRoutes.post('/login', async (c) => {
 authRoutes.get('/me', authRequired, (c) => {
   return c.json({ username: c.get('username') });
 });
+
+// --- GitHub OAuth binding (authorization-code flow, admin only) -----------------
+
+/**
+ * GET /api/auth/github/login -> { url } to redirect the browser to.
+ * `redirect` is where GitHub sends the user back; it must be registered on the
+ * OAuth App and live under the admin portal (callback page handles the code).
+ */
+authRoutes.get('/github/login', authRequired, (c) => {
+  if (!oauthConfigured()) {
+    return c.json({ error: '服务端未配置 GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET' }, 400);
+  }
+  const redirect = c.req.query('redirect') ?? `${origin(c)}/admin/github-callback`;
+  const state = crypto.randomUUID().replace(/-/g, '');
+  return c.json({ url: oauthAuthorizeUrl(state, redirect), state, redirect });
+});
+
+/**
+ * GET /api/auth/github/callback?code&state — browser lands here from GitHub.
+ * Exchanges the code, stores the token bound to this admin, then redirects
+ * back to the admin portal with the result in the fragment.
+ */
+authRoutes.get('/github/callback', async (c) => {
+  const code = c.req.query('code');
+  const redirect = c.req.query('redirect') ?? `${origin(c)}/admin/github-callback`;
+  if (!code) {
+    return c.redirect(`${redirect}#error=missing_code`);
+  }
+  const result = await oauthExchange(code, redirect);
+  if ('error' in result) {
+    return c.redirect(`${redirect}#error=${encodeURIComponent(result.error)}`);
+  }
+  try {
+    const { login } = await verifyGithubToken(result.token);
+    await saveOAuthToken(result.token, login);
+    return c.redirect(`${redirect}#bound=${encodeURIComponent(login)}`);
+  } catch (err: any) {
+    return c.redirect(`${redirect}#error=${encodeURIComponent(err.message ?? 'verify failed')}`);
+  }
+});
+
+/**
+ * DELETE /api/auth/github/unbind -> remove the OAuth binding (PAT untouched).
+ */
+authRoutes.delete('/github/unbind', authRequired, async (c) => {
+  await clearOAuthToken();
+  return c.json({ ok: true });
+});
+
+function origin(c: { req: { url: string; header: (n: string) => string | undefined } }): string {
+  const url = new URL(c.req.url);
+  const host = c.req.header('x-forwarded-host') ?? url.host;
+  const proto = c.req.header('x-forwarded-proto') ?? url.protocol.replace(':', '');
+  return `${proto}://${host}`;
+}

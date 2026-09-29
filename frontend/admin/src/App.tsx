@@ -5,6 +5,7 @@ import { UNAUTHORIZED_EVENT } from "./lib/api";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
+import GithubCallback from "./pages/GithubCallback";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import Sessions from "./pages/Sessions";
@@ -41,6 +42,9 @@ export default function App() {
     <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
+        {/* OAuth callback: outside the layout (no auth requirement — the
+            backend already authenticated the exchange). */}
+        <Route path="github-callback" element={<GithubCallback />} />
         <Route
           element={
             <ProtectedRoute>

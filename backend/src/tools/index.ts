@@ -11,14 +11,14 @@
 
 import { getFullResume, updateResumeSection } from './resume.js';
 import { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
-import { addGithubRepo, analyzeProject, getProjectDoc, listProjects } from './projects.js';
+import { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
 import { rememberFact, recallFacts, forgetFact } from './memory.js';
 import { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 
 // Re-export individual tools for direct use if needed
 export { getFullResume, updateResumeSection } from './resume.js';
 export { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
-export { addGithubRepo, analyzeProject, getProjectDoc, listProjects } from './projects.js';
+export { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
 export { rememberFact, recallFacts, forgetFact } from './memory.js';
 export { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 
@@ -43,6 +43,7 @@ export const WRITE_TOOLS = {
   createSkill,
   updateSkill,
   deleteSkill,
+  listGithubRepos,
 };
 
 /** Tool set assembled for the recruiter (read-only) agent. */

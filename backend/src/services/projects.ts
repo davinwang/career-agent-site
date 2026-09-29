@@ -11,6 +11,7 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { get, run } from '../db/client.js';
 import { config } from '../config.js';
+import { authedCloneUrl } from './github.js';
 
 export interface ProjectRow {
   id: string;
@@ -47,12 +48,17 @@ export async function cloneRepo(
     const srcDir = path.join(repoBase, 'src');
     await fs.mkdir(srcDir, { recursive: true });
 
+    // Inject the hosted GitHub credential (PAT or OAuth token) when the URL
+    // is HTTPS — enables private repos; public repos clone as before.
+    const effectiveUrl = await authedCloneUrl(url);
+
     // Clone using simple-git
     const { simpleGit } = await import('simple-git');
     const git = simpleGit();
-    await git.clone(url, srcDir, ['--depth', '1']);
+    await git.clone(effectiveUrl, srcDir, ['--depth', '1']);
   } catch (err: any) {
-    return { ok: false, error: `Failed to clone repository: ${err.message}` };
+    const hosted = '（已尝试使用托管的 GitHub 凭证）';
+    return { ok: false, error: `Failed to clone repository ${hosted}: ${err.message}` };
   }
 
   const now = new Date().toISOString();

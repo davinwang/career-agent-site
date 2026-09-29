@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Session, KnowledgeItem, Project } from "../types/api";
 import { SectionHead, Card, Badge, Spinner } from "../components/ui";
+import GithubSettings from "../components/GithubSettings";
 import {
   IconUpload,
   IconProjects,
@@ -144,6 +145,10 @@ export default function Dashboard() {
                 </div>
               ))}
             </Card>
+          </div>
+
+          <div className="mt-6">
+            <GithubSettings />
           </div>
         </section>
 

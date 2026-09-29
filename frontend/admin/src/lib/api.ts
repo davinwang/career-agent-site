@@ -11,6 +11,17 @@ import type {
 } from "../types/api";
 import type { ResumeData } from "../types/resume";
 
+/** A GitHub repo as returned by the official /user/repos endpoint. */
+export interface RepoInfo {
+  full_name: string;
+  html_url: string;
+  private: boolean;
+  description: string | null;
+  language: string | null;
+  pushed_at: string | null;
+  default_branch?: string;
+}
+
 /** Base URL — empty in dev (Vite proxies /api & /ag-ui) or configurable. */
 export const API_BASE: string =
   (import.meta.env.VITE_API_URL as string | undefined) ?? "";
@@ -306,6 +317,31 @@ export const api = {
   // Artifacts (chat-page nine-grid aggregate)
   getArtifacts(): Promise<unknown> {
     return request("/api/artifacts");
+  },
+
+  // GitHub credential hosting / OAuth binding
+  getGithubStatus(): Promise<{
+    pat: boolean;
+    oauth: { bound: boolean; login: string | null };
+    source: "pat" | "oauth" | null;
+    user: string | null;
+  }> {
+    return request("/api/settings/github");
+  },
+  saveGithubPat(pat: string): Promise<{ ok: boolean; login: string }> {
+    return request("/api/settings/github", { method: "PUT", body: json({ pat }) });
+  },
+  removeGithubCreds(): Promise<void> {
+    return request("/api/settings/github", { method: "DELETE" });
+  },
+  listGithubRepos(): Promise<{ repos: RepoInfo[]; source: string }> {
+    return request("/api/settings/github/repos");
+  },
+  githubOauthStart(): Promise<{ url: string; state: string; redirect: string }> {
+    return request(`/api/auth/github/login?redirect=${encodeURIComponent(window.location.origin + "/admin/github-callback")}`);
+  },
+  unbindGithubOauth(): Promise<void> {
+    return request("/api/auth/github/unbind", { method: "DELETE" });
   },
 };
 

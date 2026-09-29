@@ -2,6 +2,43 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { get, all } from '../db/client.js';
 import { cloneRepo, runProjectAnalysis, type ProjectRow } from '../services/projects.js';
+import { getGithubToken, listRepos } from '../services/github.js';
+
+/**
+ * List GitHub repos reachable by the hosted credential. Admin only.
+ * Lets the mentor pick repos directly ("分析我最近的三个仓库").
+ */
+export const listGithubRepos = createTool({
+  id: 'list-github-repos',
+  description:
+    'List GitHub repositories accessible with the hosted GitHub credential (PAT or OAuth binding). Returns name, URL, private flag, language, description, last push date.',
+  inputSchema: z.object({}),
+  execute: async () => {
+    const current = await getGithubToken();
+    if (!current) {
+      return {
+        error:
+          '尚未托管 GitHub 凭证。请在管理端「设置」中托管 PAT 或绑定 GitHub 账号后再试。',
+      };
+    }
+    const repos = await listRepos(current.token);
+    if ('error' in repos) {
+      return { error: repos.error };
+    }
+    return {
+      source: current.source,
+      count: repos.length,
+      repos: repos.map((r) => ({
+        full_name: r.full_name,
+        url: r.html_url,
+        private: r.private,
+        language: r.language,
+        description: r.description,
+        pushed_at: r.pushed_at,
+      })),
+    };
+  },
+});
 
 /**
  * Clone a GitHub repo into the repos directory. Admin only.

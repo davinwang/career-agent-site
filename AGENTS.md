@@ -27,12 +27,13 @@ Legacy v1 (Chainlit) lives under `legacy/` as read-only reference only — **not
 
 ## Backend layout (`backend/src/`)
 
-- `server.ts` — Hono app: routes `/api/{auth,resume,sessions,upload,skills,knowledge,projects}`, SSE chat via AG-UI, global CORS (`config.frontendOrigins`), centralized onError (never leak stacks in prod).
+- `server.ts` — Hono app: routes `/api/{auth,resume,sessions,upload,skills,knowledge,projects,settings}`, `GET /api/artifacts` (nine-grid aggregate), SSE chat via AG-UI, global CORS (`config.frontendOrigins`), centralized onError (never leak stacks in prod). Image uploads (`/uploads/*.png|jpg|…`) are served PUBLIC (recruiter resume photos); other uploads require JWT.
 - `db/` — `schema.ts` (idempotent DDL: resume, sessions, messages, knowledge, projects), `client.ts` (libSQL), `seed.ts` (bootstrap only: admin creds + default skills; resume is NOT seeded — published via admin portal).
 - `mastra/` — two agents: `recruiterAgent` (read-only tools) and `adminAgent` (read+write). LibSQLStore shares the app DB file.
 - `tools/index.ts` — tool registry. **Key invariant: recruiter gets only `READ_TOOLS`; `WRITE_TOOLS` (updateResumeSection, ingestFile, addGithubRepo, analyzeProject, rememberFact, forgetFact…) are admin-only. Never give the recruiter agent write tools.**
 - `guardrails/` — input check + output redaction (source-dump redaction).
 - `services/pdf.ts` — PDF generation via pdfkit using fonts in `/fonts` (Alibaba PuHuiTi).
+- `services/github.ts` — GitHub integration. Two credential paths, both verified/stored via official GitHub endpoints: (1) hosted PAT (`PUT /api/settings/github`, AES-256-GCM encrypted in settings table, key derived from JWT_SECRET); (2) OAuth App authorization-code flow (`/api/auth/github/login|callback|unbind`, env `GITHUB_CLIENT_ID/SECRET`). `cloneRepo` injects the hosted credential into HTTPS clone URLs (private repos work); `listGithubRepos` agent tool lists reachable repos.
 
 ## Config / env
 
