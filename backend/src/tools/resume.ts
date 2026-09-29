@@ -49,7 +49,13 @@ export const updateResumeSection = createTool({
     section: z
       .enum(['experience', 'projects', 'skills', 'education', 'summary', 'status', 'tags', 'name', 'photo'])
       .describe('Which resume section to update. "photo" takes a public URL path like /uploads/xxx.png'),
-    data: z.unknown().describe('New data for the section (type depends on section)'),
+    data: z.unknown().describe(
+      'New data for the section (type depends on section). ' +
+      'experience[] items accept: company, position, period, desc, achievements[], tech, ' +
+      'and logo (public image URL like /uploads/xxx.png — company logo, shown next to the company name). ' +
+      'education[] items accept: school, degree, major, period, and logo (public image URL — school badge). ' +
+      'Logos are optional placeholders; set them whenever the user provides a logo image.',
+    ),
   }),
   execute: async (context) => {
     try {

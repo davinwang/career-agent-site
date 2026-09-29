@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config.js';
 import { authRequired, type AppEnv } from './auth.js';
 import { all, get, run } from '../db/client.js';
+import { IMAGE_EXTENSIONS, normalizeImage } from '../services/images.js';
 
 export const uploadRoutes = new Hono<AppEnv>();
 
@@ -63,18 +64,32 @@ uploadRoutes.post('/', authRequired, async (c) => {
     return c.json({ error: 'file exceeds 50MB limit', size: file.size }, 413);
   }
 
-  const storedName = `${uuidv4()}${ext}`;
+  // --- Image normalization (security) --------------------------------------
+  // Avatars and logos are re-encoded through sharp before touching disk:
+  // the stored file is a clean PNG of a fixed size, and anything that is
+  // not a decodable image (polyglot, disguised executable) is rejected 415.
+  let buffer: Buffer<ArrayBufferLike> = Buffer.from(await file.arrayBuffer());
+  let storedExt = ext;
+  if ((IMAGE_EXTENSIONS as readonly string[]).includes(ext)) {
+    try {
+      buffer = await normalizeImage(buffer, 'logo');
+    } catch {
+      return c.json({ error: 'file is not a valid image (normalization failed)' }, 415);
+    }
+    storedExt = '.png';
+  }
+
+  const storedName = `${uuidv4()}${storedExt}`;
   await fs.mkdir(config.uploadDir, { recursive: true });
   const dest = path.join(config.uploadDir, storedName);
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   await fs.writeFile(dest, buffer);
 
   const id = uuidv4();
   const createdAt = new Date().toISOString();
   await run(
     'INSERT OR REPLACE INTO uploads (id, stored_name, original_name, ext, size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, storedName, file.name, ext, file.size, createdAt],
+    [id, storedName, file.name, storedExt, buffer.length, createdAt],
   );
 
   return c.json({
@@ -82,8 +97,9 @@ uploadRoutes.post('/', authRequired, async (c) => {
     id,
     original_name: file.name,
     stored_name: storedName,
-    size: file.size,
-    extension: ext,
+    size: buffer.length,
+    extension: storedExt,
+    normalized: storedExt !== ext,
     path: dest,
     uploaded_at: createdAt,
   });

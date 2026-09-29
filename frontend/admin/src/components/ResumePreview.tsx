@@ -1,8 +1,26 @@
+import { API_BASE } from "../lib/api";
 import type { ResumeData } from "../types/resume";
+
+/** Tiny className joiner (no clsx dependency). */
+const cx = (...parts: Array<string | false | undefined>) => parts.filter(Boolean).join(" ");
+/** Defensive: some legacy blobs store string fields as non-arrays. */
+const asArray = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);
 
 /** Editorial resume renderer — mirrors what the recruiter-facing page shows. */
 export default function ResumePreview({ data }: { data: ResumeData }) {
-  const skills = data.skills ?? {};
+  // `skills` may arrive as {category: [items]} OR a flat ["Category: a, b"] array
+  // (legacy zh data) — fold the array shape into a record so rendering is uniform.
+  const rawSkills = (data.skills ?? {}) as unknown;
+  const skills: Record<string, string[]> =
+    Array.isArray(rawSkills)
+      ? Object.fromEntries(
+          (rawSkills as unknown[]).map((line) => {
+            const s = String(line);
+            const idx = s.indexOf("：") >= 0 ? s.indexOf("：") : s.indexOf(":");
+            return idx > 0 ? [s.slice(0, idx).trim(), s.slice(idx + 1).split(/[、,，;；]\s*/).map((x) => x.trim()).filter(Boolean)] : [s, []];
+          }),
+        )
+      : (rawSkills as Record<string, string[]>);
   const skillGroups = Object.entries(skills);
 
   return (
@@ -55,15 +73,18 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
                   style={{ background: "var(--accent)" }}
                 />
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <h3 className="font-display text-base font-semibold">{e.company}</h3>
+                  <h3 className="flex items-center gap-2.5 font-display text-base font-semibold">
+                    <LogoSlot src={e.logo} alt={e.company || ""} />
+                    {e.company}
+                  </h3>
                   {e.period && (
                     <span className="font-mono text-[0.7rem] text-[var(--text-muted)]">{e.period}</span>
                   )}
                 </div>
                 {e.role && <div className="text-sm text-[var(--accent)]">{e.role}</div>}
-                {e.highlights && (
+                {e.highlights && asArray(e.highlights).length > 0 && (
                   <ul className="mt-2 space-y-1">
-                    {e.highlights.map((h, j) => (
+                    {asArray(e.highlights).map((h, j) => (
                       <li key={j} className="flex gap-2 text-[0.86rem] leading-relaxed">
                         <span className="mt-2 h-1 w-1 shrink-0 rounded-full" style={{ background: "var(--text-muted)" }} />
                         <span>{h}</span>
@@ -150,9 +171,10 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
           <div className="space-y-3">
             {data.education.map((ed, i) => (
               <div key={i} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <div>
+                <div className="flex items-center gap-2.5">
+                  <LogoSlot src={ed.logo} alt={ed.school || ""} small />
                   <span className="font-display text-base font-semibold">{ed.school}</span>
-                  <span className="ml-2 text-sm text-[var(--text-muted)]">
+                  <span className="text-sm text-[var(--text-muted)]">
                     {[ed.degree, ed.field].filter(Boolean).join(" · ")}
                   </span>
                 </div>
@@ -165,6 +187,32 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
         </section>
       )}
     </article>
+  );
+}
+
+/** Logo placeholder: shows the image when set, otherwise a monogram tile. */
+function LogoSlot({ src, alt, small }: { src?: string; alt: string; small?: boolean }) {
+  const size = small ? "h-6 w-6" : "h-8 w-8";
+  const url = src && !src.startsWith("http") ? `${API_BASE}${src}` : src;
+  return url ? (
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      className={cx(size, "shrink-0 rounded border object-contain p-[2px]")}
+      style={{ borderColor: "var(--rule)", background: "var(--surface)" }}
+      onError={(e) => {
+        (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+      }}
+    />
+  ) : (
+    <span
+      aria-hidden
+      className={cx(size, "grid shrink-0 place-items-center rounded border font-display text-[11px] font-bold")}
+      style={{ borderColor: "var(--rule)", background: "var(--surface-sunken, var(--surface))", color: "var(--text-muted)" }}
+    >
+      {alt.slice(0, 1)}
+    </span>
   );
 }
 
