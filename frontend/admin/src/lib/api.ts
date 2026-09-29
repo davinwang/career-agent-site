@@ -165,6 +165,10 @@ export const api = {
   },
 
   // Sessions
+  getCurrentSession(): Promise<{ session: { id: string; side: string; updated_at: string } }> {
+    return request(`/api/sessions/current?side=admin`);
+  },
+
   listSessions(side?: "recruiter" | "admin"): Promise<{ sessions: Session[] }> {
     const q = side ? `?side=${side}` : "";
     return request(`/api/sessions${q}`);

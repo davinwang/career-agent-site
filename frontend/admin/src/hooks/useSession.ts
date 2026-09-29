@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE, getToken, ApiError } from "../lib/api";
 import { parseSSE } from "../lib/sse";
 
-const SESSION_KEY = "job-agent-admin-session";
-
 export interface ToolCall {
   id: string;
   name: string;
@@ -24,19 +22,6 @@ export interface ChatMessage {
 function uuid(): string {
   if (crypto?.randomUUID) return crypto.randomUUID();
   return `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function getOrCreateSessionId(): string {
-  try {
-    let id = localStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = uuid();
-      localStorage.setItem(SESSION_KEY, id);
-    }
-    return id;
-  } catch {
-    return uuid();
-  }
 }
 
 /** Normalise a persisted DB message row into the UI chat model. */
@@ -76,15 +61,38 @@ function fromRow(row: {
 }
 
 export function useSession() {
-  const [sessionId] = useState(getOrCreateSessionId);
+  // Session identity lives server-side (keyed to the logged-in user), so the
+  // same account sees the same chat history from any browser/device.
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load persisted history on mount.
+  // Resolve the server-side current session, then load its history.
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { session } = await api.getCurrentSession();
+        if (!active) return;
+        setSessionId(session.id);
+      } catch (err) {
+        if (active && err instanceof ApiError && err.status !== 401) {
+          setError(err.message);
+        }
+        if (active) setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Load persisted history once the session id is known.
+  useEffect(() => {
+    if (!sessionId) return;
     let active = true;
     (async () => {
       try {
@@ -127,7 +135,7 @@ export function useSession() {
   const send = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || streaming) return;
+      if (!trimmed || streaming || !sessionId) return;
       setError(null);
 
       const userMsg: ChatMessage = {

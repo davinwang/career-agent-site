@@ -1,3 +1,4 @@
+import { randomUUID as uuid } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, all, run } from '../db/client.js';
@@ -57,6 +58,44 @@ sessionRoutes.get('/', authRequired, async (c) => {
     );
   }
   return c.json({ sessions: rows });
+});
+
+/**
+ * GET /api/sessions/current?side=admin -> the caller's most recent session of
+ * that side, creating it (with a server-generated id) if none exists yet.
+ * Server-side session identity: the admin chat follows the authenticated user
+ * across browsers/devices instead of a per-browser localStorage id.
+ */
+sessionRoutes.get('/current', authRequired, async (c) => {
+  const side = c.req.query('side') ?? 'admin';
+  const parsed = sideSchema.safeParse(side);
+  if (!parsed.success) {
+    return c.json({ error: 'side must be "recruiter" or "admin"' }, 400);
+  }
+  if (parsed.data !== 'admin') {
+    // Only the admin side is identity-scoped today.
+    return c.json({ error: 'side must be "admin"' }, 400);
+  }
+  const username = c.get('username') as string;
+  const marker = `owner:${username}`;
+
+  // Latest admin session for this user (marker in metadata).
+  const rows = await all<SessionRow>(
+    "SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE side = 'admin' AND metadata = ? ORDER BY updated_at DESC LIMIT 1",
+    [marker],
+  );
+  if (rows.length > 0) {
+    return c.json({ session: rows[0] });
+  }
+
+  const id = `admin-${uuid()}`;
+  const now = new Date().toISOString();
+  await run(
+    'INSERT INTO sessions (id, side, created_at, updated_at, metadata) VALUES (?, ?, ?, ?, ?)',
+    [id, 'admin', now, now, marker],
+  );
+  const created = await get<SessionRow>('SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE id = ?', [id]);
+  return c.json({ session: created });
 });
 
 /**
