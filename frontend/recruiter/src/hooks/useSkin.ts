@@ -1,53 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export const SKIN_IDS = ['classic', 'modern', 'emerald'] as const;
 export type SkinId = (typeof SKIN_IDS)[number];
 
-export const DEFAULT_SKIN: SkinId = 'classic';
+const SKIN_KEY = 'recruiter-skin';
 
 function isSkinId(value: unknown): value is SkinId {
   return typeof value === 'string' && (SKIN_IDS as readonly string[]).includes(value);
 }
 
+function readLocal(): SkinId {
+  try {
+    const stored = localStorage.getItem(SKIN_KEY);
+    if (isSkinId(stored)) return stored;
+  } catch {
+    /* ignore */
+  }
+  return 'classic';
+}
+
 /**
- * Fetch the candidate-chosen UI skin and apply it as `data-skin` on <html>.
- * Public endpoint, fails soft to 'classic'. Applied before resume fetch so the
- * first paint already carries the right palette.
+ * Visitor-chosen UI skin, applied as `data-skin` on <html> and persisted in
+ * localStorage. Fully client-side: the candidate's admin choice no longer
+ * controls this portal.
  */
-export function useSkin(): SkinId {
-  const [skin, setSkin] = useState<SkinId>(() => {
-    try {
-      const cached = localStorage.getItem('recruiter-skin');
-      return isSkinId(cached) ? cached : DEFAULT_SKIN;
-    } catch {
-      return DEFAULT_SKIN;
-    }
-  });
+export function useSkin() {
+  const [skin, setSkinState] = useState<SkinId>(readLocal);
 
   useEffect(() => {
     document.documentElement.dataset.skin = skin;
     try {
-      localStorage.setItem('recruiter-skin', skin);
+      localStorage.setItem(SKIN_KEY, skin);
     } catch {
-      /* ignore */
+      /* storage blocked — skin just won't persist */
     }
-    let active = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/settings/ui-theme');
-        if (!res.ok) return;
-        const payload = (await res.json()) as { skin?: unknown };
-        if (!active || !isSkinId(payload.skin)) return;
-        setSkin(payload.skin);
-        document.documentElement.dataset.skin = payload.skin;
-      } catch {
-        /* offline — keep cached/default skin */
-      }
-    })();
-    return () => {
-      active = false;
-    };
   }, [skin]);
 
-  return skin;
+  const setSkin = useCallback((next: SkinId) => setSkinState(next), []);
+
+  return { skin, setSkin };
 }

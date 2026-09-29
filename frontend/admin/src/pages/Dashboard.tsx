@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Session, KnowledgeItem, Project } from "../types/api";
 import { SectionHead, Card, Badge, Spinner } from "../components/ui";
+import { useAdminSkin } from "../hooks/useAdminSkin";
 import {
   IconUpload,
   IconProjects,
@@ -18,7 +19,8 @@ interface Stats {
   sessions: Session[];
 }
 
-type SkinId = "classic" | "modern" | "emerald";
+const SKIN_IDS = ["classic", "modern", "emerald"] as const;
+type SkinId = (typeof SKIN_IDS)[number];
 
 const SKINS: { id: SkinId; label: string; en: string; desc: string; swatch: string[] }[] = [
   {
@@ -45,31 +47,14 @@ const SKINS: { id: SkinId; label: string; en: string; desc: string; swatch: stri
 ];
 
 function SkinPicker() {
-  const [skin, setSkin] = useState<SkinId | null>(null);
+  const { skin, setSkin } = useAdminSkin();
   const [saving, setSaving] = useState<SkinId | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .getUiTheme()
-      .then((r) => active && setSkin(r.skin))
-      .catch(() => active && setSkin("classic"));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const choose = async (next: SkinId) => {
+  const choose = (next: SkinId) => {
     if (next === skin || saving) return;
     setSaving(next);
-    try {
-      await api.setUiTheme(next);
-      setSkin(next);
-    } catch {
-      /* keep previous selection on failure */
-    } finally {
-      setSaving(null);
-    }
+    setSkin(next);
+    setSaving(null);
   };
 
   return (
@@ -222,7 +207,10 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-6">
-            <SectionHead title="猎头端界面" en="Recruiter UI theme" />
+            <SectionHead title="管理端界面" en="Admin UI theme" />
+            <p className="mb-3 text-xs text-[var(--text-muted)]">
+              仅作用于管理端外观；猎头端访客在页面右上角自行选择。
+            </p>
             <SkinPicker />
           </div>
 

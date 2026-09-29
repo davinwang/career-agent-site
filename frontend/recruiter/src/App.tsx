@@ -51,7 +51,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
 function RecruiterPortal() {
   const { sessionId, resetSession } = useSession();
   const { data, loading, error, offline, lang, setLang, languages, reload } = useResume();
-  // Candidate-chosen skin (admin dashboard) — applies data-skin to <html>.
+  // Visitor-chosen skin — applies data-skin to <html>, persisted locally.
   useSkin();
   const t = getUi(lang);
   const isZh = lang.toLowerCase().startsWith('zh');

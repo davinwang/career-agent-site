@@ -254,3 +254,65 @@ body::before {
 .slide-in {
   animation: slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* ==========================================================================
+   SKINS — the admin's own look (chosen in Dashboard, applied as `data-skin`
+   on <html>). Independent from the recruiter portal: visitors pick theirs
+   client-side. Default (no attribute / 'classic') = warm editorial console.
+   ========================================================================== */
+
+/* ---- SKIN: modern — crisp cool whites, indigo accent, rounded ---- */
+[data-skin='modern'] {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-sunken: #eceef3;
+  --text: #10131a;
+  --text-muted: #7b8290;
+  --rule: #dfe2ea;
+  --accent: #4f46e5;
+  --accent-soft: #e4e2fc;
+}
+.dark[data-skin='modern'],
+[data-skin='modern'].dark {
+  --bg: #0b0d13;
+  --surface: #12151d;
+  --surface-sunken: #0e1119;
+  --text: #e7eaf2;
+  --text-muted: #6f7684;
+  --rule: #262b38;
+  --accent: #818cf8;
+  --accent-soft: #232449;
+}
+[data-skin='modern'] .font-display,
+[data-skin='modern'] h1,
+[data-skin='modern'] h2 {
+  font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---- SKIN: emerald — ivory paper, emerald accent, serif display ---- */
+[data-skin='emerald'] {
+  --bg: #eceee6;
+  --surface: #f8f9f4;
+  --surface-sunken: #e3e6d9;
+  --text: #131a15;
+  --text-muted: #75816f;
+  --rule: #ccd2c0;
+  --accent: #1d6b4f;
+  --accent-soft: #d7e8dd;
+}
+.dark[data-skin='emerald'],
+[data-skin='emerald'].dark {
+  --bg: #0a0f0c;
+  --surface: #121a15;
+  --surface-sunken: #0e1511;
+  --text: #e4ebe3;
+  --text-muted: #6d7a6c;
+  --rule: #263028;
+  --accent: #5fbd8f;
+  --accent-soft: #173427;
+}
+[data-skin='emerald'] .font-display,
+[data-skin='emerald'] h1,
+[data-skin='emerald'] h2 {
+  font-family: "Noto Serif SC", "Fraunces", ui-serif, Georgia, serif;
+}

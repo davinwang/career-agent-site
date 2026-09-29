@@ -18,12 +18,13 @@ export const settingsRoutes = new Hono<AppEnv>();
 
 /**
  * GET /api/settings/ui-theme -> { skin }
- * Public: the recruiter portal reads it before first paint decisions.
+ * Admin only. The admin portal's own look & feel — the recruiter portal no
+ * longer follows it (visitors pick their own skin client-side).
  */
-settingsRoutes.get('/ui-theme', async (c) => {
+settingsRoutes.get('/ui-theme', authRequired, async (c) => {
   try {
     const row = await get<SettingRow>(
-      "SELECT value FROM settings WHERE key = 'recruiter_skin'",
+      "SELECT value FROM settings WHERE key = 'admin_skin'",
     );
     const skin = row?.value && (SKIN_IDS as readonly string[]).includes(row.value)
       ? row.value
@@ -37,6 +38,7 @@ settingsRoutes.get('/ui-theme', async (c) => {
 
 /**
  * PUT /api/settings/ui-theme { skin } -> { ok, skin }. Admin only.
+ * Persists the admin portal's skin so it follows the account across devices.
  */
 settingsRoutes.put('/ui-theme', authRequired, async (c) => {
   const raw = await c.req.json().catch(() => null);
@@ -45,7 +47,7 @@ settingsRoutes.put('/ui-theme', authRequired, async (c) => {
     return c.json({ error: `skin must be one of: ${SKIN_IDS.join(', ')}` }, 400);
   }
   await run(
-    `INSERT INTO settings (key, value, updated_at) VALUES ('recruiter_skin', ?, datetime('now'))
+    `INSERT INTO settings (key, value, updated_at) VALUES ('admin_skin', ?, datetime('now'))
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
     [parsed.data.skin],
   );
