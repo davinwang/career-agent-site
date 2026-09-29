@@ -170,16 +170,40 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
           <SectionTitle zh="教育背景" en="Education" />
           <div className="space-y-3">
             {data.education.map((ed, i) => (
-              <div key={i} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <div className="flex items-center gap-2.5">
-                  <LogoSlot src={ed.logo} alt={ed.school || ""} small />
-                  <span className="font-display text-base font-semibold">{ed.school}</span>
-                  <span className="text-sm text-[var(--text-muted)]">
-                    {[ed.degree, ed.field].filter(Boolean).join(" · ")}
-                  </span>
+              <div key={i}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                  <div className="flex items-center gap-2.5">
+                    <LogoSlot src={ed.logo} alt={ed.school || ""} small />
+                    <span className="font-display text-base font-semibold">{ed.school}</span>
+                    <span className="text-sm text-[var(--text-muted)]">
+                      {[ed.degree, ed.field].filter(Boolean).join(" · ")}
+                    </span>
+                  </div>
+                  {ed.period && (
+                    <span className="font-mono text-[0.7rem] text-[var(--text-muted)]">{ed.period}</span>
+                  )}
                 </div>
-                {ed.period && (
-                  <span className="font-mono text-[0.7rem] text-[var(--text-muted)]">{ed.period}</span>
+                {ed.verification && ed.verification.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 pl-[34px]">
+                    {ed.verification.map((v) => (
+                      <a
+                        key={v.url}
+                        href={v.url}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        title={v.code ? `${v.label} · 验证码 ${v.code}` : v.label}
+                        className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[0.68rem]"
+                        style={{
+                          borderColor: "var(--accent)",
+                          color: "var(--accent)",
+                          background: "var(--accent-soft)",
+                        }}
+                      >
+                        ✓ {v.label}
+                        {v.code ? <span className="font-mono opacity-70">{v.code}</span> : null}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}

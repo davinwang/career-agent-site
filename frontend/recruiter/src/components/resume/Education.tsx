@@ -73,6 +73,27 @@ export function Education({ items, lang, t }: Props) {
             {edu.period ? (
               <p className="sys-label mt-2.5 mb-0 tabular-nums">{edu.period}</p>
             ) : null}
+            {edu.verification && edu.verification.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5 border-t border-hair pt-2.5">
+                {edu.verification.map((v) => (
+                  <a
+                    key={v.url}
+                    href={v.url}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    title={v.code ? `${v.label} · 验证码 ${v.code}` : v.label}
+                    className="inline-flex items-center gap-1 border border-accent/35 bg-accent/8 px-1.5 py-0.5 text-[10.5px] leading-none text-accent transition-colors hover:border-accent hover:bg-accent/15"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-2.5 w-2.5" aria-hidden>
+                      <path d="M12 2 4.5 5v6c0 4.6 3.2 8.9 7.5 10.5 4.3-1.6 7.5-5.9 7.5-10.5V5L12 2Z" strokeLinejoin="round" />
+                      <path d="m9 11.5 2.2 2.2L15.5 9.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {v.label}
+                    {v.code ? <span className="font-mono opacity-70">{v.code}</span> : null}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

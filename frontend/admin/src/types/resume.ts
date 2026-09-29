@@ -28,6 +28,8 @@ export interface EducationItem {
   field?: string;
   period?: string;
   logo?: string;
+  /** Official credential verification links (CHSI 学信网 etc). */
+  verification?: Array<{ label: string; url: string; code?: string }>;
 }
 
 /** skills is a map of category -> list of skill strings. */

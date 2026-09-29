@@ -53,7 +53,13 @@ export const updateResumeSection = createTool({
       'New data for the section (type depends on section). ' +
       'experience[] items accept: company, position, period, desc, achievements[], tech, ' +
       'and logo (public image URL like /uploads/xxx.png — company logo, shown next to the company name). ' +
-      'education[] items accept: school, degree, major, period, and logo (public image URL — school badge). ' +
+      'education[] items accept: school, degree, major, period, logo (public image URL — school badge), ' +
+      'and verification: array of {label, url, code?} — official credential verification links. ' +
+      'For Chinese credentials use CHSI (学信网 www.chsi.com.cn) online verification reports: the USER obtains ' +
+      '《教育部学历证书电子注册备案表》/《学籍在线验证报告》 themselves (they contain personal info — never ask for ' +
+      'id numbers or report PDFs), then gives you the 在线验证码 or the share URL; store e.g. ' +
+      'verification: [{label: "学信网学历验证", url: "https://www.chsi.com.cn/xlcx/lqjy.jsp?...", code: "16位验证码"}]. ' +
+      'Recruiters click the link to verify authenticity on the official site. ' +
       'Logos are optional placeholders; set them whenever the user provides a logo image.',
     ),
   }),

@@ -37,6 +37,21 @@ export interface ResumeEducation {
   field: string;
   period: string;
   logo?: string;
+  /**
+   * Official credential verification links (e.g. CHSI 学信网 在线验证报告).
+   * The candidate obtains the report/verification code themselves; the
+   * recruiter clicks through to the official site to verify authenticity.
+   */
+  verification?: ResumeVerification[];
+}
+
+export interface ResumeVerification {
+  /** Display label, e.g. "学信网学历验证" / "CHSI Degree Verification". */
+  label: string;
+  /** Official verification URL (chsi.com.cn / chinadegrees.cn …). */
+  url: string;
+  /** Optional online verification code shown alongside the link. */
+  code?: string;
 }
 
 export interface ResumeData {

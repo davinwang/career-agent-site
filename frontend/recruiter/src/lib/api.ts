@@ -4,6 +4,7 @@ import type {
   ResumeEducation,
   ResumeExperience,
   ResumeProject,
+  ResumeVerification,
   StoredMessage,
 } from '../types/resume';
 
@@ -155,6 +156,23 @@ function normalizeProjects(items: unknown): ResumeProject[] {
   }).filter((v): v is ResumeProject => v !== null && v.name !== '');
 }
 
+function normalizeVerification(items: unknown): ResumeVerification[] | undefined {
+  if (!Array.isArray(items)) return undefined;
+  const list = items
+    .map((raw): ResumeVerification | null => {
+      if (!isRecord(raw)) return null;
+      const url = str(raw.url);
+      if (!/^https?:\/\//.test(url)) return null;
+      return {
+        label: str(raw.label) || '官方验证',
+        url,
+        code: str(raw.code) || undefined,
+      };
+    })
+    .filter((v): v is ResumeVerification => v !== null);
+  return list.length ? list : undefined;
+}
+
 function normalizeEducation(items: unknown): ResumeEducation[] {
   if (!Array.isArray(items)) return [];
   return items.map((raw): ResumeEducation | null => {
@@ -165,6 +183,7 @@ function normalizeEducation(items: unknown): ResumeEducation[] {
       field: str(raw.field) || str(raw.major),
       period: str(raw.period) || str(raw.meta),
       logo: str(raw.logo) || undefined,
+      verification: normalizeVerification(raw.verification),
     } satisfies ResumeEducation;
   }).filter((v): v is ResumeEducation => v !== null && (v.school !== '' || v.degree !== ''));
 }
