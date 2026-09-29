@@ -129,6 +129,15 @@ export async function runProjectAnalysis(projectId: string): Promise<AnalysisRes
       [doc, JSON.stringify(resumeContent), 'done', projectId],
     );
 
+    // Land the doc as AGENTS.md next to the cloned source (best-effort).
+    try {
+      const repoDir = path.join(config.repoDir, project.name);
+      await fs.mkdir(repoDir, { recursive: true });
+      await fs.writeFile(path.join(repoDir, 'AGENTS.md'), doc, 'utf-8');
+    } catch (writeErr: any) {
+      console.warn(`[projects] AGENTS.md write failed for ${project.name}:`, writeErr?.message);
+    }
+
     return {
       ok: true,
       id: projectId,

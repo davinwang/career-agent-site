@@ -1,4 +1,5 @@
 import { Agent } from '@mastra/core/agent';
+import type { MastraMemory } from '@mastra/core/memory';
 import { RECRUITER_SYSTEM_PROMPT } from '../../prompts/system.js';
 import { composeInstructions } from '../../prompts/skills.js';
 import { recruiterTools } from '../../tools/index.js';
@@ -12,7 +13,7 @@ import { llmModelConfig } from '../model.js';
  * engineering. Skills enabled in the DB are appended to the base prompt so the
  * candidate can tune recruiter behaviour without a redeploy.
  */
-export async function createRecruiterAgent() {
+export async function createRecruiterAgent(memory?: MastraMemory) {
   const instructions = await composeInstructions(RECRUITER_SYSTEM_PROMPT);
 
   return new Agent({
@@ -21,6 +22,10 @@ export async function createRecruiterAgent() {
     instructions,
     model: llmModelConfig(),
     tools: recruiterTools,
+    memory,
+    defaultOptions: {
+      maxSteps: 15,
+    },
   });
 }
 

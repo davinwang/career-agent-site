@@ -6,6 +6,7 @@ import { streamSSE } from 'hono/streaming';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
+import type { Context } from 'hono';
 import { config } from './config.js';
 import { initDb, closeDb, get, all } from './db/client.js';
 import { getMastra } from './mastra/index.js';
@@ -17,11 +18,8 @@ import { skillRoutes } from './api/skills.js';
 import { knowledgeRoutes } from './api/knowledge.js';
 import { projectRoutes } from './api/projects.js';
 import { settingsRoutes } from './api/settings.js';
-import { checkInput } from './guardrails/input.js';
-import { redactSourceDumps } from './guardrails/output.js';
-import { ensureSession, persistMessages, getRecentMessages } from './services/session.js';
-import { loadSkillsPrompt } from './prompts/skills.js';
-import { RECRUITER_SYSTEM_PROMPT, ADMIN_SYSTEM_PROMPT } from './prompts/system.js';
+import { ensureSession } from './services/session.js';
+import { runAgentTurn } from './services/chat.js';
 
 const app = new Hono<AppEnv>();
 
@@ -169,298 +167,97 @@ function getBlockMessage(violation: string): string {
 }
 
 /**
- * POST /ag-ui/recruiter — Recruiter-facing AG-UI SSE endpoint.
- *
- * Applies input guardrail → runs agent → applies output guardrail → streams via SSE.
- * No authentication required (public-facing).
+ * Shared AG-UI SSE handler: translates the Mastra bridge event stream into
+ * the frontend event subset and forwards it over SSE. Runs the full agent
+ * tool-calling loop via @ag-ui/mastra (tools, memory, multi-step).
  */
-app.post('/ag-ui/recruiter', async (c) => {
+async function handleAgUi(
+  c: Context,
+  opts: { kind: 'admin' | 'recruiter'; resourceId: string },
+) {
   const body = await c.req.json().catch(() => null);
   if (!body) {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { messages, threadId } = body;
+  const { messages, threadId } = body as {
+    messages?: Array<{ role: string; content: string }>;
+    threadId?: string;
+  };
   const sessionId = threadId || uuidv4();
 
-  // Extract the last user message
-  const lastUserMsg = messages?.filter((m: any) => m.role === 'user').pop();
-  if (!lastUserMsg?.content) {
-    return c.json({ error: 'No user message found' }, 400);
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return c.json({ error: 'No messages found' }, 400);
   }
 
-  const userMessage = lastUserMsg.content;
+  const history = messages
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: m.role, content: m.content }));
 
-  // Ensure session exists
-  await ensureSession(sessionId, 'recruiter');
-
-  // Apply input guardrail
-  const inputCheck = await checkInput(userMessage);
-  if (!inputCheck.safe) {
-    const blockMsg = getBlockMessage(inputCheck.violation!);
-    // Persist the exchange
-    await persistMessages(sessionId, 'recruiter', userMessage, blockMsg);
-
-    // Return block message as SSE
-    return streamSSE(c, async (stream) => {
-      const messageId = uuidv4();
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_START', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: blockMsg }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_END', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_FINISHED', threadId: sessionId }), event: 'message' });
-    });
-  }
-
-  // Load history for context
-  const history = await getRecentMessages(sessionId, 20);
-
-  // Compose instructions with skills
-  const skillsPrompt = await loadSkillsPrompt();
-  // Anti-hallucination guard: when no resume/knowledge has been published, the
-  // model tends to invent plausible-sounding candidate details. Inject an
-  // explicit empty-dossier directive so it declines honestly instead.
-  const [resumeCount, knowledgeCount] = await Promise.all([
-    get<{ c: number }>('SELECT COUNT(*) AS c FROM resume'),
-    get<{ c: number }>('SELECT COUNT(*) AS c FROM knowledge'),
-  ]);
-  const emptyDossierPrompt =
-    (resumeCount?.c ?? 0) === 0 && (knowledgeCount?.c ?? 0) === 0
-      ? `\n\n## ⚠️ 档案为空（重要）\n当前系统中没有任何已发布的简历或知识库材料。你**没有**关于候选人的任何真实信息——绝对禁止编造工作经历、项目、技术栈、量化成果等内容。对于询问候选人经历的问题，如实回答："该候选人的档案尚未发布，暂时无法提供具体信息，请稍后再来查看。"不要猜测、不要示意你有隐藏的简历内容。`
-      : '';
-  const instructions = `${RECRUITER_SYSTEM_PROMPT}${skillsPrompt}${emptyDossierPrompt}`;
-
-  // Build messages array for the agent
-  const agentMessages = [
-    { role: 'system' as const, content: instructions },
-    ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-    { role: 'user' as const, content: userMessage },
-  ];
-
-  // Call the LLM directly for streaming
-  const { llm } = config;
+  await ensureSession(sessionId, opts.kind);
 
   return streamSSE(c, async (stream) => {
-    const messageId = uuidv4();
-    let fullResponse = '';
-
     try {
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_START', messageId }), event: 'message' });
+      const events = await runAgentTurn({
+        kind: opts.kind,
+        sessionId,
+        resourceId: opts.resourceId,
+        messages: history,
+        signal: c.req.raw.signal,
+      });
 
-      const response = await fetch(`${llm.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${llm.apiKey}`,
+      // Forward translated events; abort the agent when the client goes away.
+      const subscription = events.subscribe({
+        next: (evt) => {
+          void stream.writeSSE({ data: JSON.stringify(evt), event: 'message' });
         },
-        body: JSON.stringify({
-          model: llm.model,
-          messages: agentMessages,
-          temperature: 0.7,
-          max_tokens: 2000,
-          stream: true,
-        }),
-        signal: AbortSignal.timeout(60_000),
+        error: (err) => {
+          console.error(`[ag-ui/${opts.kind}] stream error:`, err);
+        },
       });
+      c.req.raw.signal.addEventListener('abort', () => subscription.unsubscribe());
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`LLM API error ${response.status}: ${errText.slice(0, 200)}`);
-      }
-
-      // Process SSE stream from LLM
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullResponse += delta;
-                await stream.writeSSE({
-                  data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta }),
-                  event: 'message',
-                });
-              }
-            } catch {
-              // Skip malformed chunks
-            }
+      // Wait for the observable to complete before closing the SSE stream.
+      await new Promise<void>((resolve) => {
+        const check = setInterval(() => {
+          if (subscription.closed) {
+            clearInterval(check);
+            resolve();
           }
-        }
-      }
-
-      // Apply output guardrail to the full response
-      const redactedResponse = redactSourceDumps(fullResponse);
-
-      // If redaction changed the response, send a correction event
-      if (redactedResponse !== fullResponse) {
-        // Send the redacted version as a replacement
-        await stream.writeSSE({
-          data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: '', redacted: true, fullContent: redactedResponse }),
-          event: 'message',
-        });
-        fullResponse = redactedResponse;
-      }
-
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_END', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_FINISHED', threadId: sessionId }), event: 'message' });
-
-      // Persist messages
-      await persistMessages(sessionId, 'recruiter', userMessage, fullResponse);
-    } catch (err: any) {
-      console.error('[ag-ui/recruiter] Error:', err);
-      const errorMsg = '抱歉，处理您的请求时出现了问题。请稍后重试。';
-      await stream.writeSSE({
-        data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: errorMsg }),
-        event: 'message',
+        }, 200);
       });
+    } catch (err: any) {
+      console.error(`[ag-ui/${opts.kind}] error:`, err);
+      const messageId = uuidv4();
+      const msg = err?.message ?? '处理请求时出现问题';
+      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_START', messageId }), event: 'message' });
+      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: `⚠ ${msg}` }), event: 'message' });
       await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_END', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_FINISHED', threadId: sessionId }), event: 'message' });
-      await persistMessages(sessionId, 'recruiter', userMessage, errorMsg);
+      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_ERROR', delta: msg }), event: 'message' });
     }
   });
-});
+}
 
 /**
- * POST /ag-ui/admin — Admin-facing AG-UI SSE endpoint.
- * Requires JWT authentication.
+ * POST /ag-ui/recruiter — Recruiter-facing AG-UI SSE endpoint.
+ * Public (no auth). Guardrails live inside runAgentTurn (input) and the
+ * agent's own output processor.
+ */
+app.post('/ag-ui/recruiter', (c) =>
+  handleAgUi(c, { kind: 'recruiter', resourceId: 'recruiter-visitors' }),
+);
+
+/**
+ * POST /ag-ui/admin — Admin AG-UI SSE endpoint (JWT).
+ * Full tool access through the Mastra admin agent.
  */
 app.post('/ag-ui/admin', async (c) => {
-  // Verify JWT
   const username = verifyToken(c.req.header('Authorization'));
   if (!username) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
-
-  const body = await c.req.json().catch(() => null);
-  if (!body) {
-    return c.json({ error: 'Invalid JSON body' }, 400);
-  }
-
-  const { messages, threadId } = body;
-  const sessionId = threadId || uuidv4();
-
-  // Extract the last user message
-  const lastUserMsg = messages?.filter((m: any) => m.role === 'user').pop();
-  if (!lastUserMsg?.content) {
-    return c.json({ error: 'No user message found' }, 400);
-  }
-
-  const userMessage = lastUserMsg.content;
-
-  // Ensure session exists
-  await ensureSession(sessionId, 'admin');
-
-  // Load history for context
-  const history = await getRecentMessages(sessionId, 20);
-
-  // Build messages array for the agent
-  const agentMessages = [
-    { role: 'system' as const, content: ADMIN_SYSTEM_PROMPT },
-    ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-    { role: 'user' as const, content: userMessage },
-  ];
-
-  // Call the LLM directly for streaming
-  const { llm } = config;
-
-  return streamSSE(c, async (stream) => {
-    const messageId = uuidv4();
-    let fullResponse = '';
-
-    try {
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_START', messageId }), event: 'message' });
-
-      const response = await fetch(`${llm.baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${llm.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: llm.model,
-          messages: agentMessages,
-          temperature: 0.7,
-          max_tokens: 4000,
-          stream: true,
-        }),
-        signal: AbortSignal.timeout(120_000),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`LLM API error ${response.status}: ${errText.slice(0, 200)}`);
-      }
-
-      // Process SSE stream from LLM
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6).trim();
-            if (data === '[DONE]') continue;
-
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) {
-                fullResponse += delta;
-                await stream.writeSSE({
-                  data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta }),
-                  event: 'message',
-                });
-              }
-            } catch {
-              // Skip malformed chunks
-            }
-          }
-        }
-      }
-
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_END', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_FINISHED', threadId: sessionId }), event: 'message' });
-
-      // Persist messages
-      await persistMessages(sessionId, 'admin', userMessage, fullResponse);
-    } catch (err: any) {
-      console.error('[ag-ui/admin] Error:', err);
-      const errorMsg = '处理请求时出现了问题，请稍后重试。';
-      await stream.writeSSE({
-        data: JSON.stringify({ type: 'TEXT_MESSAGE_CONTENT', messageId, delta: errorMsg }),
-        event: 'message',
-      });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'TEXT_MESSAGE_END', messageId }), event: 'message' });
-      await stream.writeSSE({ data: JSON.stringify({ type: 'RUN_FINISHED', threadId: sessionId }), event: 'message' });
-      await persistMessages(sessionId, 'admin', userMessage, errorMsg);
-    }
-  });
+  return handleAgUi(c, { kind: 'admin', resourceId: `admin-${username}` });
 });
-
 app.notFound((c) => c.json({ error: 'Not Found' }, 404));
 
 // --- Bootstrap & graceful shutdown -------------------------------------------

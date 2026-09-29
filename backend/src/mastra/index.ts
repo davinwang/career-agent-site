@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { Mastra } from '@mastra/core';
 import { LibSQLStore } from '@mastra/libsql';
+import { Memory } from '@mastra/memory';
 import { config } from '../config.js';
 import { initDb } from '../db/client.js';
 import { createRecruiterAgent } from './agents/recruiter.js';
@@ -28,9 +29,11 @@ export function getMastra(): Promise<Mastra> {
       // Ensure our own tables exist first (idempotent).
       await initDb();
 
+      const memory = new Memory({ options: { lastMessages: 20 } });
+
       const [recruiterAgent, adminAgent] = await Promise.all([
-        createRecruiterAgent(),
-        createAdminAgent(),
+        createRecruiterAgent(memory),
+        createAdminAgent(memory),
       ]);
 
       const storage = new LibSQLStore({ id: 'job-agent', url: storageUrl() });
@@ -38,6 +41,7 @@ export function getMastra(): Promise<Mastra> {
       return new Mastra({
         agents: { recruiterAgent, adminAgent },
         storage,
+        memory: { default: memory },
       });
     })();
   }

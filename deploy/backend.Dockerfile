@@ -1,9 +1,10 @@
 FROM node:22-slim
 
 # fontconfig: PDF generation embeds the bundled TTFs, and git is used by the
-# repo-ingestion tools (simple-git).
+# repo-ingestion tools (simple-git). ca-certificates: git needs them to clone
+# from https remotes (node:22-slim ships without them).
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends fontconfig git && \
+    apt-get install -y --no-install-recommends fontconfig git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
