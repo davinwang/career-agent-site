@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 const THEME_KEY = 'job-agent-theme';
 
+/** The persisted choice — "system" follows the OS. */
+export type ThemeChoice = 'light' | 'dark' | 'system';
+/** The actually-applied palette (never "system"). */
 export type Theme = 'light' | 'dark';
 
 function systemTheme(): Theme {
@@ -9,17 +12,14 @@ function systemTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function initialTheme(): Theme {
-  if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
-    return 'dark';
-  }
+function initialChoice(): ThemeChoice {
   try {
     const stored = window.localStorage.getItem(THEME_KEY);
-    if (stored === 'dark' || stored === 'light') return stored;
+    if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
   } catch {
     /* ignore */
   }
-  return systemTheme();
+  return 'system';
 }
 
 function apply(theme: Theme): void {
@@ -29,44 +29,49 @@ function apply(theme: Theme): void {
 }
 
 export interface UseThemeResult {
+  /** Resolved palette currently applied. */
   theme: Theme;
-  setTheme: (t: Theme) => void;
+  /** The stored choice ('system' by default). */
+  themeChoice: ThemeChoice;
+  setTheme: (t: ThemeChoice) => void;
   toggle: () => void;
   /** true while the value comes from the OS rather than an explicit choice */
   followingSystem: boolean;
 }
 
 /**
- * Dark/light theme, persisted to localStorage and honouring the OS preference
- * on first visit. `index.html` applies the stored value before React mounts so
- * there is no flash of the wrong palette.
+ * Dark/light/system theme, persisted to localStorage. Defaults to "system":
+ * follows the OS preference live until the user makes an explicit choice.
+ * `index.html` applies the stored value before React mounts so there is no
+ * flash of the wrong palette.
  */
 export function useTheme(): UseThemeResult {
-  const [theme, setThemeState] = useState<Theme>(initialTheme);
-  const [followingSystem, setFollowingSystem] = useState<boolean>(() => {
-    try {
-      return window.localStorage.getItem(THEME_KEY) === null;
-    } catch {
-      return true;
-    }
-  });
+  const [themeChoice, setChoice] = useState<ThemeChoice>(initialChoice);
+  const [theme, setThemeState] = useState<Theme>(() =>
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+  );
 
   useEffect(() => {
-    apply(theme);
-  }, [theme]);
+    const resolved = themeChoice === 'system' ? systemTheme() : themeChoice;
+    setThemeState(resolved);
+    apply(resolved);
+  }, [themeChoice]);
 
-  // Keep following the OS until the user makes an explicit choice.
+  // While on "system", track OS changes live.
   useEffect(() => {
-    if (!followingSystem || !window.matchMedia) return;
+    if (themeChoice !== 'system' || !window.matchMedia) return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (e: MediaQueryListEvent) => setThemeState(e.matches ? 'dark' : 'light');
+    const onChange = (e: MediaQueryListEvent) => {
+      const next: Theme = e.matches ? 'dark' : 'light';
+      setThemeState(next);
+      apply(next);
+    };
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
-  }, [followingSystem]);
+  }, [themeChoice]);
 
-  const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
-    setFollowingSystem(false);
+  const setTheme = useCallback((next: ThemeChoice) => {
+    setChoice(next);
     try {
       window.localStorage.setItem(THEME_KEY, next);
     } catch {
@@ -75,8 +80,8 @@ export function useTheme(): UseThemeResult {
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [setTheme, theme]);
+    setTheme(themeChoice === 'system' ? (systemTheme() === 'dark' ? 'light' : 'dark') : themeChoice === 'dark' ? 'light' : 'dark');
+  }, [setTheme, themeChoice]);
 
-  return { theme, setTheme, toggle, followingSystem };
+  return { theme, themeChoice, setTheme, toggle, followingSystem: themeChoice === 'system' };
 }

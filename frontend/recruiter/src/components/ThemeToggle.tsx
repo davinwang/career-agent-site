@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { useSkin, SKIN_IDS, type SkinId } from '../hooks/useSkin';
 import type { UiStrings } from '../lib/i18n';
-import { MoonIcon, SunIcon } from './Icons';
+import { MoonIcon, SunIcon, MonitorIcon } from './Icons';
 
 interface Props {
   t: UiStrings;
@@ -20,7 +20,7 @@ const SKIN_META: Record<SkinId, { zh: string; en: string; swatch: string[] }> = 
  * the visitor (localStorage) — never pushed from the admin portal.
  */
 export function ThemeToggle({ t }: Props) {
-  const { theme, setTheme, followingSystem } = useTheme();
+  const { theme, themeChoice, setTheme, followingSystem } = useTheme();
   const { skin, setSkin } = useSkin();
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
@@ -89,27 +89,31 @@ export function ThemeToggle({ t }: Props) {
           className="dossier-card absolute right-0 top-[calc(100%+8px)] z-[60] w-56 origin-top-right p-3"
           style={{ boxShadow: '0 8px 30px rgba(0,0,0,0.18)' }}
         >
-          {/* Theme: light / dark */}
+          {/* Theme: light / system / dark */}
           <div className="label mb-1.5 text-[0.58rem]">{isZh ? '主题' : 'Theme'}</div>
-          <div className="seg mb-3 grid grid-cols-2 gap-1 p-1" role="radiogroup" aria-label={isZh ? '主题' : 'Theme'}>
-            {(['light', 'dark'] as const).map((mode) => {
-              const active = theme === mode;
+          <div className="seg mb-3 grid grid-cols-3 gap-1 p-1" role="radiogroup" aria-label={isZh ? '主题' : 'Theme'}>
+            {([
+              { choice: 'light', label: t.a11y.lightMode, Icon: SunIcon },
+              { choice: 'system', label: t.a11y.systemMode, Icon: MonitorIcon },
+              { choice: 'dark', label: t.a11y.darkMode, Icon: MoonIcon },
+            ] as const).map(({ choice, label, Icon }) => {
+              const active = themeChoice === choice;
               return (
                 <button
-                  key={mode}
+                  key={choice}
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setTheme(mode)}
-                  className="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[0.72rem] transition-colors"
+                  onClick={() => setTheme(choice)}
+                  className="flex flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[0.7rem] transition-colors"
                   style={{
                     borderColor: active ? 'var(--c-accent, var(--accent))' : 'transparent',
                     background: active ? 'var(--c-accent-soft, var(--accent-soft))' : 'transparent',
                     color: active ? 'var(--c-accent, var(--accent))' : 'inherit',
                   }}
                 >
-                  {mode === 'light' ? <SunIcon className="h-3.5 w-3.5" /> : <MoonIcon className="h-3.5 w-3.5" />}
-                  {mode === 'light' ? t.a11y.lightMode : t.a11y.darkMode}
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
                 </button>
               );
             })}

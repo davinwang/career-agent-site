@@ -66,6 +66,7 @@ export interface UiStrings {
     themeToggle: string;
     lightMode: string;
     darkMode: string;
+    systemMode: string;
     language: string;
     resumePanel: string;
     chatPanel: string;
@@ -138,6 +139,7 @@ const zh: UiStrings = {
     themeToggle: '切换深浅色主题',
     lightMode: '浅色',
     darkMode: '深色',
+    systemMode: '跟随系统',
     language: '切换简历语言',
     resumePanel: '候选人简历',
     chatPanel: 'AI 助手对话',
@@ -210,6 +212,7 @@ const en: UiStrings = {
     themeToggle: 'Toggle colour theme',
     lightMode: 'Light',
     darkMode: 'Dark',
+    systemMode: 'System',
     language: 'Switch résumé language',
     resumePanel: 'Candidate résumé',
     chatPanel: 'AI agent conversation',

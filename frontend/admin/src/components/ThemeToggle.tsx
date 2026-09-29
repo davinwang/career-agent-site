@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useUi } from "../stores/ui";
 import { useAdminSkin, SKIN_IDS, type SkinId } from "../hooks/useAdminSkin";
-import { IconSun, IconMoon } from "./icons";
+import { IconSun, IconMoon, IconMonitor } from "./icons";
 
 const SKIN_META: Record<SkinId, { label: string; swatch: [string, string] }> = {
   classic: { label: "经典报纸", swatch: ["#e9e2d3", "#b4441c"] },
@@ -16,7 +16,8 @@ const SKIN_META: Record<SkinId, { label: string; swatch: [string, string] }> = {
  */
 export default function ThemeToggle() {
   const theme = useUi((s) => s.theme);
-  const toggleTheme = useUi((s) => s.toggleTheme);
+  const themeChoice = useUi((s) => s.themeChoice);
+  const setThemeChoice = useUi((s) => s.setThemeChoice);
   const { skin, setSkin } = useAdminSkin();
   const [open, setOpen] = useState(false);
   const popRef = useRef<HTMLDivElement>(null);
@@ -85,31 +86,35 @@ export default function ThemeToggle() {
             boxShadow: "0 8px 30px rgba(0,0,0,0.18)",
           }}
         >
-          {/* Theme: light / dark */}
+          {/* Theme: light / system / dark */}
           <div className="mb-1.5 text-[0.6rem] font-medium uppercase tracking-widest text-[var(--text-muted)]">
             主题
           </div>
-          <div className="mb-3 grid grid-cols-2 gap-1" role="radiogroup" aria-label="主题">
-            {(["light", "dark"] as const).map((mode) => {
-              const active = theme === mode;
+          <div className="mb-3 grid grid-cols-3 gap-1" role="radiogroup" aria-label="主题">
+            {([
+              { choice: "light", label: "浅色", Icon: IconSun },
+              { choice: "system", label: "跟随系统", Icon: IconMonitor },
+              { choice: "dark", label: "深色", Icon: IconMoon },
+            ] as const).map(({ choice, label, Icon }) => {
+              const active = themeChoice === choice;
               return (
                 <button
-                  key={mode}
+                  key={choice}
                   type="button"
                   role="radio"
                   aria-checked={active}
                   onClick={() => {
-                    if (!active) toggleTheme();
+                    if (!active) setThemeChoice(choice);
                   }}
-                  className="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[0.72rem] transition-colors"
+                  className="flex flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[0.7rem] transition-colors"
                   style={{
                     borderColor: active ? "var(--accent)" : "var(--rule)",
                     background: active ? "var(--accent-soft)" : "transparent",
                     color: active ? "var(--accent)" : "var(--text-muted)",
                   }}
                 >
-                  {mode === "light" ? <IconSun width={14} height={14} /> : <IconMoon width={14} height={14} />}
-                  {mode === "light" ? "浅色" : "深色"}
+                  <Icon width={14} height={14} />
+                  {label}
                 </button>
               );
             })}

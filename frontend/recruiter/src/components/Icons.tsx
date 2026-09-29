@@ -30,6 +30,15 @@ export function MoonIcon(props: IconProps) {
   );
 }
 
+export function MonitorIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="2.5" y="4" width="19" height="13" rx="1.8" />
+      <path d="M8.5 20.5h7M12 17v3.5" />
+    </svg>
+  );
+}
+
 export function ArrowUpRight(props: IconProps) {
   return (
     <svg {...base} {...props}>
