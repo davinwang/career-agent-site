@@ -79,7 +79,7 @@ export const searchKnowledge = createTool({
       const results = scored.slice(0, topK).map((s) => ({
         filename: s.filename,
         score: s.score,
-        excerpt: s.text.slice(0, 500),
+        excerpt: excerptAround(s.text, tokens),
       }));
 
       return { results, total_matches: scored.length };
@@ -196,10 +196,55 @@ async function extractPdf(filePath: string): Promise<string> {
     const pdfParse = (await import('pdf-parse')).default;
     const buffer = await fs.readFile(filePath);
     const result = await pdfParse(buffer);
-    return result.text || '';
+    return normalizePdfText(result.text || '');
   } catch (err: any) {
     throw new Error(`PDF extraction failed: ${err.message}`);
   }
+}
+
+/**
+ * Build an excerpt centered on term matches instead of the chunk start.
+ * Concatenates windows around up to 3 distinct match positions so hits late
+ * in a chunk (e.g. an education section at the end of a resume chunk) are
+ * actually visible to the caller. Falls back to the chunk head.
+ */
+function excerptAround(text: string, tokens: string[], windowSize = 600, maxWindows = 3): string {
+  const lower = text.toLowerCase();
+  const positions: number[] = [];
+  for (const token of tokens) {
+    const idx = lower.indexOf(token.toLowerCase());
+    if (idx >= 0) positions.push(idx);
+  }
+  if (positions.length === 0) {
+    return text.slice(0, windowSize);
+  }
+  positions.sort((a, b) => a - b);
+  const windows: string[] = [];
+  let lastEnd = -1;
+  for (const pos of positions) {
+    if (pos < lastEnd) continue; // already covered by the previous window
+    if (windows.length >= maxWindows) break;
+    const from = Math.max(0, pos - 120);
+    const to = Math.min(text.length, pos + windowSize - 120);
+    windows.push((from > 0 ? '…' : '') + text.slice(from, to) + (to < text.length ? '…' : ''));
+    lastEnd = to;
+  }
+  return windows.join('\n……\n');
+}
+
+/**
+ * Clean up pdf-parse output. PDF text layers (especially resumes exported
+ * from design tools) produce lines with missing spaces and stray breaks
+ * inside CJK text; collapse those so search/chunking sees sane sentences.
+ * Preserves existing newlines — only joins lines that were split mid-word.
+ */
+function normalizePdfText(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .replace(/([\u4e00-\u9fff])\n([\u4e00-\u9fff])/g, '$1$2') // CJK line joins
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 async function extractDocx(filePath: string): Promise<string> {
@@ -261,17 +306,22 @@ function chunkText(text: string, chunkSize: number, overlap: number): string[] {
   while (start < text.length) {
     let end = start + chunkSize;
 
-    // Try to break at a newline or sentence boundary
     if (end < text.length) {
+      // Prefer breaking at a blank line (section boundary), then any newline.
+      const sectionBreak = text.lastIndexOf('\n\n', end);
       const lastNewline = text.lastIndexOf('\n', end);
-      if (lastNewline > start + chunkSize * 0.5) {
+      if (sectionBreak > start + chunkSize * 0.3) {
+        end = sectionBreak + 1;
+      } else if (lastNewline > start + chunkSize * 0.5) {
         end = lastNewline + 1;
       }
     }
 
-    chunks.push(text.slice(start, end).trim());
-    start = end - overlap;
-    if (start >= text.length) break;
+    const piece = text.slice(start, end).trim();
+    if (piece) chunks.push(piece);
+    const next = end - overlap;
+    if (next <= start) break; // guard against a zero/negative step
+    start = next;
   }
 
   return chunks.filter((c) => c.length > 0);
