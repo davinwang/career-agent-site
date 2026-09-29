@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import type { Session, KnowledgeItem, Project } from "../types/api";
 import { SectionHead, Card, Badge, Spinner } from "../components/ui";
-import { useAdminSkin } from "../hooks/useAdminSkin";
 import {
   IconUpload,
   IconProjects,
@@ -19,80 +18,7 @@ interface Stats {
   sessions: Session[];
 }
 
-const SKIN_IDS = ["classic", "modern", "emerald"] as const;
-type SkinId = (typeof SKIN_IDS)[number];
 
-const SKINS: { id: SkinId; label: string; en: string; desc: string; swatch: string[] }[] = [
-  {
-    id: "classic",
-    label: "经典报纸",
-    en: "Classic",
-    desc: "暖纸底色 · 衬线标题",
-    swatch: ["#e9e2d3", "#b4441c", "#17141c"],
-  },
-  {
-    id: "modern",
-    label: "现代简约",
-    en: "Modern",
-    desc: "冷白卡片 · 靛蓝圆角",
-    swatch: ["#f4f5f8", "#4f46e5", "#10131a"],
-  },
-  {
-    id: "emerald",
-    label: "墨绿典雅",
-    en: "Emerald",
-    desc: "象牙底色 · 祖母绿",
-    swatch: ["#eceee6", "#1d6b4f", "#131a15"],
-  },
-];
-
-function SkinPicker() {
-  const { skin, setSkin } = useAdminSkin();
-  const [saving, setSaving] = useState<SkinId | null>(null);
-
-  const choose = (next: SkinId) => {
-    if (next === skin || saving) return;
-    setSaving(next);
-    setSkin(next);
-    setSaving(null);
-  };
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {SKINS.map((s) => {
-        const selected = skin === s.id;
-        return (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => choose(s.id)}
-            disabled={saving !== null}
-            aria-pressed={selected}
-            className="rise flex items-start gap-3 rounded-md border p-3 text-left transition-all hover:-translate-y-0.5 disabled:opacity-60"
-            style={{
-              borderColor: selected ? "var(--accent)" : "var(--rule)",
-              background: selected ? "var(--accent-soft)" : "var(--surface)",
-              borderWidth: selected ? 2 : 1,
-            }}
-          >
-            <span className="mt-0.5 flex flex-none overflow-hidden rounded-sm border" style={{ borderColor: "var(--rule)" }}>
-              {s.swatch.map((c) => (
-                <span key={c} style={{ width: 10, height: 26, background: c }} />
-              ))}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">
-                {s.label} <span className="label ml-1 text-[0.56rem]">{s.en}</span>
-              </span>
-              <span className="mt-0.5 block text-xs text-[var(--text-muted)]">{s.desc}</span>
-              {selected && <span className="label mt-1 block text-[0.56rem] text-[var(--accent)]">✓ 当前使用</span>}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function relTime(iso: string): string {
   const d = new Date(iso);
@@ -204,14 +130,6 @@ export default function Dashboard() {
                 </Card>
               </Link>
             ))}
-          </div>
-
-          <div className="mt-6">
-            <SectionHead title="管理端界面" en="Admin UI theme" />
-            <p className="mb-3 text-xs text-[var(--text-muted)]">
-              仅作用于管理端外观；猎头端访客在页面右上角自行选择。
-            </p>
-            <SkinPicker />
           </div>
 
           <div className="mt-6">
