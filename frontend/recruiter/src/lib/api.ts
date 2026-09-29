@@ -101,16 +101,30 @@ function normalizeExperience(items: unknown): ResumeExperience[] {
     const metaSplit = splitMetaPeriod(meta);
 
     const company = str(raw.company) || titleCompany;
-    const role = str(raw.role) || titleRole || metaSplit.role;
+    const role = str(raw.role) || str(raw.position) || titleRole || metaSplit.role;
     const period = str(raw.period) || (meta ? metaSplit.period : '') || meta;
+
+    // Backend stores responsibilities in `desc` (string) and outcomes in
+    // `achievements` ([]); fall back to legacy `duties`/`highlights`/`points`.
+    const duties = [
+      ...strArray(raw.duties),
+      ...strArray(raw.responsibilities),
+    ];
+    if (duties.length === 0 && str(raw.desc)) duties.push(str(raw.desc));
+
+    const highlights = strArray(raw.achievements).length
+      ? strArray(raw.achievements)
+      : strArray(raw.highlights).length
+        ? strArray(raw.highlights)
+        : strArray(raw.points);
 
     return {
       company,
       role,
       period,
-      highlights: strArray(raw.highlights).length
-        ? strArray(raw.highlights)
-        : strArray(raw.points),
+      duties,
+      highlights,
+      tech: str(raw.tech) || undefined,
       logo: str(raw.logo) || undefined,
     } satisfies ResumeExperience;
   }).filter((v): v is ResumeExperience => v !== null && (v.company !== '' || v.role !== ''));

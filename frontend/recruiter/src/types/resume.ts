@@ -12,7 +12,11 @@ export interface ResumeExperience {
   company: string;
   role: string;
   period: string;
+  /** Day-to-day responsibilities ("工作内容"), e.g. backend field `desc`. */
+  duties: string[];
+  /** Measurable outcomes ("工作成果"), e.g. backend field `achievements`. */
   highlights: string[];
+  tech?: string;
   logo?: string;
 }
 
