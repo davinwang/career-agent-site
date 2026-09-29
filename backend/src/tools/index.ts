@@ -14,6 +14,7 @@ import { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js'
 import { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
 import { rememberFact, recallFacts, forgetFact } from './memory.js';
 import { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
+import { findLogo } from './logo.js';
 
 // Re-export individual tools for direct use if needed
 export { getFullResume, updateResumeSection } from './resume.js';
@@ -21,6 +22,7 @@ export { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js'
 export { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
 export { rememberFact, recallFacts, forgetFact } from './memory.js';
 export { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
+export { findLogo } from './logo.js';
 
 /** Read-only tools available to BOTH agents. */
 export const READ_TOOLS = {
@@ -44,6 +46,7 @@ export const WRITE_TOOLS = {
   updateSkill,
   deleteSkill,
   listGithubRepos,
+  findLogo,
 };
 
 /** Tool set assembled for the recruiter (read-only) agent. */
