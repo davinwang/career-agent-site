@@ -62,7 +62,8 @@ function fromRow(row: {
 
 export function useSession() {
   // Session identity lives server-side (keyed to the logged-in user), so the
-  // same account sees the same chat history from any browser/device.
+  // same account sees the same chat history from any browser/device. Multiple
+  // chats are supported: switchSession()/newSession() swap the active id.
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -262,6 +263,35 @@ export function useSession() {
     setError(null);
   }, []);
 
+  /** Load a different existing session's history into the view. */
+  const switchSession = useCallback((id: string) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
+    setMessages([]);
+    setError(null);
+    setLoadingHistory(true);
+    setSessionId(id);
+  }, []);
+
+  /** Create a fresh server-side admin chat and make it the active one. */
+  const newSession = useCallback(async () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
+    setMessages([]);
+    setError(null);
+    try {
+      const { session } = await api.newCurrentSession();
+      setLoadingHistory(true);
+      setSessionId(session.id);
+      return session.id;
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "新建会话失败");
+      return null;
+    }
+  }, []);
+
   return {
     sessionId,
     messages,
@@ -271,6 +301,8 @@ export function useSession() {
     send,
     stop,
     clear,
+    switchSession,
+    newSession,
     setError,
   };
 }

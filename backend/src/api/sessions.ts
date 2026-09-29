@@ -99,6 +99,29 @@ sessionRoutes.get('/current', authRequired, async (c) => {
 });
 
 /**
+ * POST /api/sessions/current?side=admin -> start a NEW admin chat for the
+ * caller. The fresh session carries the owner marker, so it immediately
+ * becomes the "current" session (latest updated_at wins) on every device.
+ */
+sessionRoutes.post('/current', authRequired, async (c) => {
+  const side = c.req.query('side') ?? 'admin';
+  const parsed = sideSchema.safeParse(side);
+  if (!parsed.success || parsed.data !== 'admin') {
+    return c.json({ error: 'side must be "admin"' }, 400);
+  }
+  const username = c.get('username') as string;
+  const marker = `owner:${username}`;
+  const id = `admin-${uuid()}`;
+  const now = new Date().toISOString();
+  await run(
+    'INSERT INTO sessions (id, side, created_at, updated_at, metadata) VALUES (?, ?, ?, ?, ?)',
+    [id, 'admin', now, now, marker],
+  );
+  const created = await get<SessionRow>('SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE id = ?', [id]);
+  return c.json({ session: created });
+});
+
+/**
  * GET /api/sessions/:id/messages -> message history for a session.
  */
 sessionRoutes.get('/:id/messages', async (c) => {

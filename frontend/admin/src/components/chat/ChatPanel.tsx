@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "../../hooks/useSession";
 import { api } from "../../lib/api";
 import MessageBubble from "./MessageBubble";
@@ -13,11 +13,48 @@ const SUGGESTIONS = [
   "我想往 AI 架构方向转型，帮我评估和规划",
 ];
 
+interface SessionItem {
+  id: string;
+  updated_at: string;
+  created_at: string;
+}
+
+function fmt(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Title of a chat = first user message (fetched lazily per open dropdown). */
+async function fetchTitle(id: string): Promise<string> {
+  try {
+    const { messages } = await api.getSessionMessages(id);
+    const first = messages.find((m) => m.role === "user");
+    const text = first?.content?.trim() ?? "";
+    return text ? (text.length > 24 ? `${text.slice(0, 24)}…` : text) : "（空对话）";
+  } catch {
+    return "（无法读取）";
+  }
+}
+
 export default function ChatPanel() {
-  const { messages, loadingHistory, streaming, error, send, stop, clear, setError } =
-    useSession();
+  const {
+    sessionId, messages, loadingHistory, streaming, error,
+    send, stop, switchSession, newSession, setError,
+  } = useSession();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
+
+  // Session list dropdown state.
+  const [listOpen, setListOpen] = useState(false);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [titles, setTitles] = useState<Record<string, string>>({});
+  const [creating, setCreating] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Refresh the artifact panel whenever a tool call completes (assistant turn
   // finished) — cheap and always fresh after writes.
@@ -35,6 +72,59 @@ export default function ChatPanel() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
 
+  const loadSessions = useCallback(async () => {
+    try {
+      const r = await api.listAdminSessions();
+      const items = (r.sessions ?? []).map((s) => ({
+        id: s.id,
+        updated_at: s.updated_at,
+        created_at: s.created_at,
+      }));
+      setSessions(items);
+      // Lazily resolve titles for sessions we haven't seen yet.
+      setTitles((prev) => {
+        const next = { ...prev };
+        for (const it of items) if (!(it.id in next)) next[it.id] = "…";
+        return next;
+      });
+      await Promise.all(
+        items.map(async (it) => {
+          const title = await fetchTitle(it.id);
+          setTitles((prev) => ({ ...prev, [it.id]: title }));
+        }),
+      );
+    } catch {
+      /* non-fatal: the dropdown just stays empty */
+    }
+  }, []);
+
+  // Load the list whenever the dropdown opens.
+  useEffect(() => {
+    if (listOpen) void loadSessions();
+  }, [listOpen, loadSessions]);
+
+  // Close the dropdown on outside click.
+  useEffect(() => {
+    if (!listOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (listRef.current && !listRef.current.contains(e.target as Node)) {
+        setListOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [listOpen]);
+
+  const handleNew = async () => {
+    setCreating(true);
+    try {
+      await newSession();
+      setListOpen(false);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleAttach = async (file: File) => {
     try {
       const res = await api.uploadFile(file);
@@ -50,18 +140,85 @@ export default function ChatPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <div className="label text-[0.62rem]">求职导师 · Career Mentor</div>
-        <div className="flex items-center gap-3">
-          {messages.length > 0 && (
+        <div className="flex items-center gap-2" ref={listRef}>
+          {/* Session switcher */}
+          <div className="relative">
             <button
               type="button"
-              onClick={clear}
-              className="label text-[0.6rem] hover:text-[var(--accent)]"
+              onClick={() => setListOpen((v) => !v)}
+              className="label flex items-center gap-1 rounded-md border px-2 py-1 text-[0.6rem] transition-colors hover:border-[var(--accent)]"
+              style={{ borderColor: "var(--rule)" }}
+              aria-expanded={listOpen}
+              aria-haspopup="listbox"
             >
-              清空当前视图
+              会话
+              <IconChevron
+                width={11}
+                height={11}
+                style={{ transform: listOpen ? "rotate(180deg)" : "none" }}
+              />
             </button>
-          )}
+            {listOpen && (
+              <div
+                role="listbox"
+                aria-label="会话列表"
+                className="absolute right-0 z-30 mt-1 max-h-[60vh] w-72 overflow-y-auto rounded-lg border shadow-lg"
+                style={{
+                  borderColor: "var(--rule)",
+                  background: "var(--surface, #fff)",
+                  color: "inherit",
+                }}
+              >
+                {sessions.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-[0.72rem] text-[var(--text-muted)]">
+                    暂无历史会话
+                  </div>
+                ) : (
+                  sessions.map((s) => {
+                    const active = s.id === sessionId;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => {
+                          if (!active) switchSession(s.id);
+                          setListOpen(false);
+                        }}
+                        className={`flex w-full flex-col gap-0.5 border-b px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-[var(--accent-soft)] ${
+                          active ? "bg-[var(--accent-soft)]" : ""
+                        }`}
+                        style={{ borderColor: "var(--rule)" }}
+                      >
+                        <span
+                          className="truncate text-[0.76rem] font-medium"
+                          style={active ? { color: "var(--accent)" } : undefined}
+                        >
+                          {titles[s.id] ?? "…"}
+                          {active && <span className="label ml-1.5 text-[0.55rem]">当前</span>}
+                        </span>
+                        <span className="label text-[0.55rem]">{fmt(s.updated_at)}</span>
+                      </button>
+                    );
+                  })
+                )}
+                <div className="border-t p-2" style={{ borderColor: "var(--rule)" }}>
+                  <button
+                    type="button"
+                    onClick={handleNew}
+                    disabled={creating}
+                    className="w-full rounded-md border px-3 py-1.5 text-center text-[0.72rem] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
+                    style={{ borderColor: "var(--rule)" }}
+                  >
+                    {creating ? "创建中…" : "＋ 新建对话"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -168,6 +168,14 @@ export const api = {
   getCurrentSession(): Promise<{ session: { id: string; side: string; updated_at: string } }> {
     return request(`/api/sessions/current?side=admin`);
   },
+  /** Start a new admin chat — the fresh session becomes the current one. */
+  newCurrentSession(): Promise<{ session: { id: string; side: string; updated_at: string } }> {
+    return request(`/api/sessions/current?side=admin`, { method: "POST" });
+  },
+  /** Own admin sessions, newest first (for the in-chat session switcher). */
+  listAdminSessions(): Promise<{ sessions: Array<{ id: string; side: string; created_at: string; updated_at: string; metadata: string | null }> }> {
+    return request(`/api/sessions?side=admin`);
+  },
 
   listSessions(side?: "recruiter" | "admin"): Promise<{ sessions: Session[] }> {
     const q = side ? `?side=${side}` : "";
