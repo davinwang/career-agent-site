@@ -119,7 +119,7 @@ export default function ChatInput({
               ref={fileRef}
               type="file"
               multiple
-              accept=".pdf,.docx,.doc,.txt,.md,.json,.zip,.png,.jpg,.jpeg,.webp,.gif"
+              accept=".pdf,.docx,.doc,.txt,.md,.json,.zip"
               className="hidden"
               onChange={async (e) => {
                 const files = Array.from(e.target.files ?? []);
