@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ChangeEvent } from "react";
+import type { KeyboardEvent, ChangeEvent, DragEvent } from "react";
 import { api } from "../../lib/api";
 import type { UploadOriginal } from "../../types/api";
 import { IconSend, IconPaperclip, IconSpinner, IconClose } from "../icons";
@@ -12,19 +12,24 @@ interface Props {
   placeholder?: string;
 }
 
+const ACCEPT = ".pdf,.docx,.doc,.txt,.md,.json,.zip,.png,.jpg,.jpeg,.webp,.gif";
+
 export default function ChatInput({
   onSend,
   onAttach,
   disabled,
   busy,
-  placeholder = "输入消息，Enter 发送 / Shift+Enter 换行…",
+  placeholder = "输入消息，Enter 发送 / Shift+Enter 换行…（也可直接拖入文件）",
 }: Props) {
   const [value, setValue] = useState("");
   const [attaching, setAttaching] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadOriginal[]>([]);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Counts nested dragenter/dragleave pairs so the overlay doesn't flicker.
+  const dragDepth = useRef(0);
 
   // Load the upload list lazily when the reference picker opens.
   useEffect(() => {
@@ -64,6 +69,40 @@ export default function ChatInput({
     });
     setPickerOpen(false);
     areaRef.current?.focus();
+  };
+
+  const uploadFiles = async (files: File[]) => {
+    if (files.length === 0 || !onAttach) return;
+    setAttaching(true);
+    try {
+      for (const f of files) await onAttach(f);
+    } finally {
+      setAttaching(false);
+    }
+  };
+
+  const onDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    if (!onAttach || disabled) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  };
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // allow drop
+  };
+  const onDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    if (!onAttach) return;
+    e.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  };
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    if (!onAttach || disabled || busy) return;
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    void uploadFiles(files);
   };
 
   return (
@@ -110,16 +149,33 @@ export default function ChatInput({
       )}
 
       <div
-        className="flex items-end gap-2 rounded-lg border p-2 transition-colors focus-within:border-[var(--accent)]"
-        style={{ borderColor: "var(--rule)", background: "var(--surface)" }}
+        className="relative flex items-end gap-2 rounded-lg border p-2 transition-colors focus-within:border-[var(--accent)]"
+        style={{
+          borderColor: dragging ? "var(--accent)" : "var(--rule)",
+          background: dragging ? "var(--accent-soft)" : "var(--surface)",
+        }}
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
+        {dragging && (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-lg border-2 border-dashed"
+            style={{ borderColor: "var(--accent)", background: "color-mix(in srgb, var(--surface) 80%, transparent)" }}
+          >
+            <span className="label text-[0.68rem]" style={{ color: "var(--accent)" }}>
+              松开以上传附件
+            </span>
+          </div>
+        )}
         {onAttach && (
           <>
             <input
               ref={fileRef}
               type="file"
               multiple
-              accept=".pdf,.docx,.doc,.txt,.md,.json,.zip"
+              accept={ACCEPT}
               className="hidden"
               onChange={async (e) => {
                 const files = Array.from(e.target.files ?? []);
