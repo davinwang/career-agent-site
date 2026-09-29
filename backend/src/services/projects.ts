@@ -11,7 +11,7 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { get, run } from '../db/client.js';
 import { config } from '../config.js';
-import { authedCloneUrl } from './github.js';
+import { authedCloneUrl, getGithubToken } from './github.js';
 
 export interface ProjectRow {
   id: string;
@@ -31,9 +31,81 @@ export function deriveProjectName(url: string): string {
 }
 
 /**
+ * Fetch a repo snapshot via the official GitHub tarball API and extract it to
+ * `<repoDir>/<name>/src`. Uses the hosted credential server-side only — the
+ * agent never sees the token. Works for private repos when the credential has
+ * Contents:Read; public repos need no credential at all.
+ */
+export async function fetchRepoTarball(
+  ownerRepo: string,
+  destDir: string,
+): Promise<{ ok: true } | { ok: false; error: string; hint?: string }> {
+  const current = await getGithubToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'job-agent-site',
+  };
+  if (current) headers.Authorization = `Bearer ${current.token}`;
+
+  const res = await fetch(`https://api.github.com/repos/${ownerRepo}/tarball`, {
+    headers,
+    redirect: 'follow',
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (res.status === 404) {
+    return {
+      ok: false,
+      error: `Repository not found or no access: ${ownerRepo}`,
+      hint: current
+        ? '托管凭证可能没有该仓库的 Contents:Read 权限（fine-grained token 需在 Repository permissions 中勾选）。'
+        : '尚未托管 GitHub 凭证，私有仓库无法拉取。',
+    };
+  }
+  if (res.status === 403) {
+    return {
+      ok: false,
+      error: `GitHub refused tarball download for ${ownerRepo} (403).`,
+      hint: 'Fine-grained PAT 需要 Repository permissions → Contents: Read；classic PAT 需要 repo scope。',
+    };
+  }
+  if (!res.ok) {
+    return { ok: false, error: `GitHub tarball API error ${res.status}` };
+  }
+
+  const buf = Buffer.from(await res.arrayBuffer());
+  await fs.mkdir(destDir, { recursive: true });
+
+  // GitHub tarballs contain a single top-level dir `<repo>-<sha>/`. Extract
+  // into a temp subdir, then move everything to <destDir>/src (replacing any
+  // stale content) — the analysis code expects sources there.
+  const { extract } = await import('tar');
+  const tmpDir = path.join(destDir, '.tmp-extract');
+  await fs.rm(tmpDir, { recursive: true, force: true });
+  await fs.mkdir(tmpDir, { recursive: true });
+  const tarball = path.join(destDir, '.download.tar.gz');
+  await fs.writeFile(tarball, buf);
+  try {
+    await extract({ file: tarball, cwd: tmpDir, strip: 1 });
+  } finally {
+    await fs.rm(tarball, { force: true });
+  }
+
+  const srcDir = path.join(destDir, 'src');
+  await fs.rm(srcDir, { recursive: true, force: true });
+  await fs.rename(tmpDir, srcDir);
+  return { ok: true };
+}
+
+/**
  * Clone a git repository (shallow) into `<repoDir>/<name>/src` and register it
  * in the projects table with status 'pending'. If a project with the same
  * name already exists it is re-pointed at the new URL instead of duplicated.
+ *
+ * Preferred path: official tarball API (no token ever enters git or the agent
+ * context). Fallback: git clone with the hosted credential injected into the
+ * URL, for non-github git hosts.
  */
 export async function cloneRepo(
   url: string,
@@ -42,23 +114,33 @@ export async function cloneRepo(
   const name = nameOpt?.trim() || deriveProjectName(url);
   const initialStatus = 'pending';
 
+  const repoBase = path.join(config.repoDir, name);
+  const srcDir = path.join(repoBase, 'src');
+
+  // Normalize owner/repo from a GitHub URL for the tarball API.
+  const ghMatch = url.match(/^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
+
   try {
-    // Ensure repos directory exists
-    const repoBase = path.join(config.repoDir, name);
-    const srcDir = path.join(repoBase, 'src');
     await fs.mkdir(srcDir, { recursive: true });
 
-    // Inject the hosted GitHub credential (PAT or OAuth token) when the URL
-    // is HTTPS — enables private repos; public repos clone as before.
-    const effectiveUrl = await authedCloneUrl(url);
+    if (ghMatch) {
+      // Clean any stale partial download first.
+      await fs.rm(srcDir, { recursive: true, force: true });
 
-    // Clone using simple-git
-    const { simpleGit } = await import('simple-git');
-    const git = simpleGit();
-    await git.clone(effectiveUrl, srcDir, ['--depth', '1']);
+      const result = await fetchRepoTarball(`${ghMatch[1]}/${ghMatch[2]}`, repoBase);
+      if (!result.ok) {
+        const hint = result.hint ? ` 提示：${result.hint}` : '';
+        return { ok: false, error: `${result.error}${hint}` };
+      }
+    } else {
+      // Non-GitHub git URL: fall back to git clone (credential injection when HTTPS).
+      const effectiveUrl = await authedCloneUrl(url);
+      const { simpleGit } = await import('simple-git');
+      const git = simpleGit();
+      await git.clone(effectiveUrl, srcDir, ['--depth', '1']);
+    }
   } catch (err: any) {
-    const hosted = '（已尝试使用托管的 GitHub 凭证）';
-    return { ok: false, error: `Failed to clone repository ${hosted}: ${err.message}` };
+    return { ok: false, error: `Failed to fetch repository: ${err.message}` };
   }
 
   const now = new Date().toISOString();
