@@ -12,6 +12,10 @@ export interface UiStrings {
     updated: string;
     offlineBadge: string;
     offlineHint: string;
+    /** header button: download résumé PDF */
+    download: string;
+    /** menu item label: download résumé PDF in a chosen language */
+    downloadPdf: string;
   };
   sections: {
     summary: string;
@@ -84,6 +88,8 @@ const zh: UiStrings = {
     updated: '更新于',
     offlineBadge: '待发布',
     offlineHint: '候选人简历尚未发布，当前展示占位内容。',
+    download: '下载',
+    downloadPdf: '下载简历 PDF',
   },
   sections: {
     summary: '个人概述',
@@ -157,6 +163,8 @@ const en: UiStrings = {
     updated: 'Updated',
     offlineBadge: 'Pending publication',
     offlineHint: 'The candidate dossier has not been published yet — placeholder shown.',
+    download: 'Download',
+    downloadPdf: 'Download résumé PDF',
   },
   sections: {
     summary: 'Profile',

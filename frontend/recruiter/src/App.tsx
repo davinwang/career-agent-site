@@ -54,7 +54,7 @@ function RecruiterPortal() {
   const { data, loading, error, offline, lang, setLang, languages, reload } = useResume();
   // Visitor-chosen skin — applies data-skin to <html>, persisted locally.
   useSkin();
-  const { uiLang, setUiLang } = useUiLang();
+  const { uiLang } = useUiLang();
   const t = getUi(uiLang);
   const isZh = uiLang.toLowerCase().startsWith('zh');
 
@@ -76,8 +76,6 @@ function RecruiterPortal() {
       lang={lang}
       languages={languages}
       onLangChange={setLang}
-      uiLang={uiLang}
-      onUiLangChange={(l) => setUiLang(l as 'zh' | 'en')}
       t={t}
       resume={
         <ResumePanel

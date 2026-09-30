@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { UiStrings } from '../lib/i18n';
 import { cx } from '../lib/utils';
+import { API_BASE } from '../lib/api';
 import { ChatIcon } from './Icons';
 import LanguageSwitch from './LanguageSwitch';
 import ThemeToggle from './ThemeToggle';
@@ -12,8 +13,6 @@ interface Props {
   lang: string;
   languages: string[];
   onLangChange: (lang: string) => void;
-  uiLang: string;
-  onUiLangChange: (lang: string) => void;
   t: UiStrings;
   /** left pane (desktop) / full screen (mobile) */
   resume: ReactNode;
@@ -27,6 +26,72 @@ interface Props {
 }
 
 const DESKTOP = '(min-width: 1024px)';
+
+/**
+ * 「下载」dropdown — pick any available résumé language as a PDF, independent of
+ * the UI language or the résumé currently shown. Straight links to the public
+ * `GET /api/resume/pdf?lang=` endpoint; no state changes involved.
+ */
+function DownloadMenu({ languages, t }: { languages: string[]; t: UiStrings }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const items = languages.length ? languages : ['zh', 'en'];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        className="seg__btn rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t.masthead.downloadPdf}
+        title={t.masthead.downloadPdf}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {t.masthead.download}
+      </button>
+      <div
+        role="menu"
+        aria-label={t.masthead.downloadPdf}
+        className={cx(
+          'absolute right-0 top-full z-50 mt-1.5 min-w-[8.5rem] border border-rule bg-surface py-1 shadow-[0_16px_40px_-16px_rgba(0,0,0,0.4)]',
+          'transition-opacity duration-150',
+          open ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+      >
+        {items.map((lang) => (
+          <a
+            key={lang}
+            role="menuitem"
+            href={`${API_BASE}/api/resume/pdf?lang=${encodeURIComponent(lang)}`}
+            onClick={close}
+            className="block px-3 py-1.5 text-[12.5px] text-ink no-underline hover:bg-raised"
+          >
+            {t.masthead.downloadPdf} · {lang.toUpperCase()}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Split layout.
@@ -44,8 +109,6 @@ export function Layout({
   lang,
   languages,
   onLangChange,
-  uiLang,
-  onUiLangChange,
   t,
   resume,
   chat,
@@ -111,15 +174,7 @@ export function Layout({
               </span>
             </span>
             <LanguageSwitch languages={languages} value={lang} onChange={onLangChange} t={t} />
-            <button
-              type="button"
-              className="seg__btn rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
-              aria-label={uiLang === 'zh' ? 'Switch UI language to English' : '切换界面语言为中文'}
-              title={uiLang === 'zh' ? 'UI Language' : '界面语言'}
-              onClick={() => onUiLangChange(uiLang === 'zh' ? 'en' : 'zh')}
-            >
-              {uiLang === 'zh' ? 'EN' : '中'}
-            </button>
+            <DownloadMenu languages={languages} t={t} />
             <ThemeToggle t={t} />
           </div>
         </div>
