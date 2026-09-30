@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import ResumePanel from './components/ResumePanel';
 import { useResume } from './hooks/useResume';
 import { useSession } from './hooks/useSession';
+import { useUiLang } from './hooks/useUiLang';
 import { getUi } from './lib/i18n';
 import { useSkin } from './hooks/useSkin';
 
@@ -53,8 +54,9 @@ function RecruiterPortal() {
   const { data, loading, error, offline, lang, setLang, languages, reload } = useResume();
   // Visitor-chosen skin — applies data-skin to <html>, persisted locally.
   useSkin();
-  const t = getUi(lang);
-  const isZh = lang.toLowerCase().startsWith('zh');
+  const { uiLang, setUiLang } = useUiLang();
+  const t = getUi(uiLang);
+  const isZh = uiLang.toLowerCase().startsWith('zh');
 
   // Keep <html lang> and the tab title in sync with the active dossier.
   useEffect(() => {
@@ -74,6 +76,8 @@ function RecruiterPortal() {
       lang={lang}
       languages={languages}
       onLangChange={setLang}
+      uiLang={uiLang}
+      onUiLangChange={(l) => setUiLang(l as 'zh' | 'en')}
       t={t}
       resume={
         <ResumePanel

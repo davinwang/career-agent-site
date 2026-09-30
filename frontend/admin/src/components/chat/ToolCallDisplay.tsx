@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ToolCall } from "../../hooks/useSession";
+import { useT } from "../../lib/i18n";
 import { IconWrench, IconChevron, IconCheck, IconSpinner } from "../icons";
 
 /** Pretty-print a value as JSON when possible, else stringify. */
@@ -40,6 +41,7 @@ function Block({ label, value }: { label: string; value: string }) {
  * result collapsed behind a second toggle.
  */
 export default function ToolCallDisplay({ call }: { call: ToolCall }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const running = call.status === "running";
@@ -69,9 +71,9 @@ export default function ToolCallDisplay({ call }: { call: ToolCall }) {
         </span>
         <IconWrench width={14} height={14} style={{ color: "var(--text-muted)" }} />
         <span className="font-mono text-[0.75rem]">
-          调用工具: <span className="accent-text font-bold">{call.name}</span>
+          {t("tool.calling")}: <span className="accent-text font-bold">{call.name}</span>
         </span>
-        {running && <span className="label text-[0.55rem]">执行中…</span>}
+        {running && <span className="label text-[0.55rem]">{t("tool.running")}</span>}
         <span className="ml-auto" style={{ color: "var(--text-muted)" }}>
           <IconChevron
             width={14}
@@ -83,7 +85,7 @@ export default function ToolCallDisplay({ call }: { call: ToolCall }) {
 
       {open && (
         <div className="border-t px-3 py-2" style={{ borderColor: "var(--rule)" }}>
-          <Block label="Arguments" value={args || "（无参数）"} />
+          <Block label="Arguments" value={args || t("tool.noArgs")} />
           {result ? (
             <div className="mt-2">
               <button
@@ -101,7 +103,7 @@ export default function ToolCallDisplay({ call }: { call: ToolCall }) {
               {showResult && <Block label="" value={result} />}
             </div>
           ) : (
-            !running && <div className="label mt-2 text-[0.56rem]">无返回结果</div>
+            !running && <div className="label mt-2 text-[0.56rem]">{t("tool.noResult")}</div>
           )}
         </div>
       )}

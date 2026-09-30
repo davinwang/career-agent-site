@@ -4,6 +4,7 @@ import type { ResumeData } from "../../types/resume";
 import type { UploadOriginal } from "../../types/api";
 import ResumePreview from "../ResumePreview";
 import { Badge, Spinner } from "../ui";
+import { useT } from "../../lib/i18n";
 import {
   IconResume,
   IconUpload,
@@ -24,10 +25,10 @@ interface Artifacts {
 }
 
 const GRID_CELLS = [
-  { kind: "resume", label: "简历", en: "Resume" },
-  { kind: "knowledge", label: "材料", en: "Docs" },
-  { kind: "projects", label: "项目", en: "Projects" },
-  { kind: "skills", label: "技能卡", en: "Skills" },
+  { kind: "resume", labelKey: "artifacts.resume", enKey: "artifacts.resumeEn" },
+  { kind: "knowledge", labelKey: "artifacts.docs", enKey: "artifacts.docsEn" },
+  { kind: "projects", labelKey: "artifacts.projects", enKey: "artifacts.projectsEn" },
+  { kind: "skills", labelKey: "artifacts.skills", enKey: "artifacts.skillsEn" },
 ] as const;
 
 type CellKind = (typeof GRID_CELLS)[number]["kind"];
@@ -94,6 +95,7 @@ export default function ArtifactPanel({
   /** Called when the user closes the detail view (used by the parent strip to collapse). */
   onOpenChange?: (open: boolean) => void;
 }) {
+  const t = useT();
   // Combine parent refreshKey (assistant tool-call turns) with local bumps
   // (in-panel deletions) into one fetch key.
   const [localRefresh, setLocalRefresh] = useState(0);
@@ -106,7 +108,7 @@ export default function ArtifactPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="mb-3 flex items-center justify-between">
-        <div className="label text-[0.62rem]">归档内容 · Archives</div>
+        <div className="label text-[0.62rem]">{t("chat.archives")}</div>
         {loading && <IconSpinner width={14} height={14} />}
       </div>
 
@@ -134,8 +136,8 @@ export default function ArtifactPanel({
               >
                 <Icon width={20} height={20} />
               </span>
-              <span className="text-xs font-medium">{cell.label}</span>
-              <span className="label text-[0.56rem]">{empty ? "待生成" : `${count}`}</span>
+              <span className="text-xs font-medium">{t(cell.labelKey)}</span>
+              <span className="label text-[0.56rem]">{empty ? t("chat.pendingGen") : `${count}`}</span>
             </button>
           );
         })}
@@ -149,7 +151,7 @@ export default function ArtifactPanel({
       )}
 
       <p className="mt-3 text-[0.66rem] leading-relaxed text-[var(--text-muted)]">
-        所有成果均由对话生成 · 点击卡片查看，修改请回到对话
+        {t("chat.artifactsFooter")}
       </p>
     </div>
   );
@@ -168,18 +170,19 @@ function Detail({
   onClose: () => void;
   onRefresh: () => void;
 }) {
+  const t = useT();
   const cell = GRID_CELLS.find((c) => c.kind === kind)!;
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
         <span className="label text-[0.6rem]">
-          {cell.label} · {cell.en}
+          {t(cell.labelKey)} · {t(cell.enKey)}
         </span>
         <button
           type="button"
           onClick={onClose}
-          aria-label="关闭详情"
+          aria-label={t("chat.closeDetail")}
           className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--text)]"
         >
           <IconClose width={15} height={15} />
@@ -187,7 +190,7 @@ function Detail({
       </div>
 
       {!data ? (
-        <Spinner label="加载中…" />
+        <Spinner label={t("chat.loadingShort")} />
       ) : kind === "resume" ? (
         <ResumeDetail resumes={data.resumes} uploads={data.uploads ?? []} onAsk={onAsk} onChanged={onRefresh} />
       ) : kind === "knowledge" ? (
@@ -198,10 +201,10 @@ function Detail({
             id: p.id,
             title: p.name,
             sub: p.repo_url ? p.repo_url.replace(/^https?:\/\/(www\.)?github\.com\//, "") : "—",
-            badge: p.repo_url ? "源码" : "文档",
+            badge: p.repo_url ? t("artifacts.source") : t("artifacts.document"),
           }))}
-          empty="还没有项目，提供 git URL 或上传项目文档开始分析"
-          askText="帮我分析一个项目"
+          empty={t("artifacts.emptyProjects")}
+          askText={t("artifacts.askProject")}
         />
       ) : (
         <ListDetail
@@ -211,8 +214,8 @@ function Detail({
             sub: s.prompt.slice(0, 60) + (s.prompt.length > 60 ? "…" : ""),
             badge: s.enabled ? "on" : "off",
           }))}
-          empty="还没有技能卡（提示词），让导师帮你配置猎头端行为"
-          askText="帮我配置猎头端的提示词技能"
+          empty={t("artifacts.emptySkills")}
+          askText={t("artifacts.askSkills")}
         />
       )}
     </div>
@@ -230,6 +233,7 @@ function ResumeDetail({
   onAsk: (t: string) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [preview, setPreview] = useState<{ lang: string; data: ResumeData } | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -259,7 +263,7 @@ function ResumeDetail({
             onClick={() => setPreview(null)}
             className="label text-[0.6rem] hover:text-[var(--accent)]"
           >
-            ← 返回列表
+            {t("common.backToList")}
           </button>
           <Badge tone="neutral">{preview.lang}</Badge>
         </div>
@@ -274,7 +278,7 @@ function ResumeDetail({
     <div className="space-y-2">
       {resumes.length === 0 && (
         <div className="py-6 text-center text-xs text-[var(--text-muted)]">
-          还没有简历。上传一份 PDF 简历给导师开始。
+          {t("artifacts.emptyResumes")}
         </div>
       )}
       {resumes.map((r) => (
@@ -295,7 +299,7 @@ function ResumeDetail({
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{r.name ?? "未命名"}</div>
+            <div className="truncate text-sm font-medium">{r.name ?? t("common.unnamed")}</div>
             <div className="label text-[0.56rem]">{r.lang.toUpperCase()}</div>
           </div>
           <button
@@ -310,13 +314,13 @@ function ResumeDetail({
             }}
             className="label text-[0.58rem] hover:text-[var(--accent)]"
           >
-            预览
+            {t("common.preview")}
           </button>
           <button
             type="button"
             onClick={() => download(r.lang)}
             disabled={downloading === r.lang}
-            aria-label="下载 PDF"
+            aria-label={`${t("common.download")} PDF`}
             className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
           >
             {downloading === r.lang ? <IconSpinner width={14} height={14} /> : <IconDownload width={15} height={15} />}
@@ -325,11 +329,11 @@ function ResumeDetail({
       ))}
       <button
         type="button"
-        onClick={() => onAsk("请基于现有材料，为我生成/完善英文简历，保持与中文版内容一致。")}
+        onClick={() => onAsk(t("artifacts.genEnResume"))}
         className="label mt-1 w-full rounded-md border border-dashed py-2 text-[0.6rem] hover:border-[var(--accent)] hover:text-[var(--accent)]"
         style={{ borderColor: "var(--rule)" }}
       >
-        + 新语言版本
+        {t("artifacts.newLangVersion")}
       </button>
       <UploadsSection uploads={uploads} onChanged={onChanged} />
     </div>
@@ -345,10 +349,11 @@ function UploadsSection({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const t = useT();
   if (uploads.length === 0) return null;
 
   const remove = async (u: UploadOriginal) => {
-    if (!window.confirm(`删除原件「${u.original_name}」？已解析入知识库的内容会保留。`)) return;
+    if (!window.confirm(t("artifacts.deleteUploadConfirm", u.original_name))) return;
     setBusy(u.stored_name);
     try {
       await api.deleteUpload(u.stored_name);
@@ -362,7 +367,7 @@ function UploadsSection({
 
   return (
     <div className="pt-2">
-      <div className="label mb-1.5 text-[0.58rem]">上传的原件 · {uploads.length}</div>
+      <div className="label mb-1.5 text-[0.58rem]">{t("artifacts.uploadsTitle", uploads.length)}</div>
       <div className="space-y-1.5">
         {uploads.map((u) => (
           <div
@@ -373,13 +378,13 @@ function UploadsSection({
             <div className="min-w-0 flex-1">
               <div className="truncate text-[0.72rem] font-medium">{u.original_name}</div>
               <div className="label text-[0.52rem]">
-                {(u.size / 1024).toFixed(0)} KB · {new Date(u.created_at).toLocaleDateString("zh-CN")}
+                {(u.size / 1024).toFixed(0)} KB · {new Date(u.created_at).toLocaleDateString()}
               </div>
             </div>
             <button
               type="button"
               onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
-              aria-label={`下载 ${u.original_name}`}
+              aria-label={t("artifacts.downloadOriginal", u.original_name)}
               className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
             >
               <IconDownload width={13} height={13} />
@@ -388,7 +393,7 @@ function UploadsSection({
               type="button"
               onClick={() => remove(u)}
               disabled={busy === u.stored_name}
-              aria-label={`删除 ${u.original_name}`}
+              aria-label={t("artifacts.deleteOriginal", u.original_name)}
               className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
             >
               {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
@@ -397,7 +402,7 @@ function UploadsSection({
         ))}
       </div>
       <p className="mt-1 text-[0.56rem] text-[var(--text-muted)]">
-        删除仅移除原件文件，解析内容仍在知识库中。
+        {t("artifacts.uploadsNote")}
       </p>
     </div>
   );
@@ -414,9 +419,10 @@ function KnowledgeDetail({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const t = useT();
 
   if (knowledge.length === 0 && uploads.length === 0) {
-    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">还没有材料，上传 PDF / 文档 / 图片后自动入库</div>;
+    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("artifacts.emptyKnowledge")}</div>;
   }
 
   // knowledge.filename usually equals the original upload name — link it to a
@@ -425,7 +431,7 @@ function KnowledgeDetail({
     uploads.find((u) => u.original_name === filename || u.stored_name === filename);
 
   const removeEntry = async (id: string, title: string) => {
-    if (!window.confirm(`从知识库删除「${title}」？此操作不可恢复。`)) return;
+    if (!window.confirm(t("artifacts.deleteKnowledgeConfirm", title))) return;
     setBusy(id);
     try {
       await api.deleteKnowledge(id);
@@ -450,14 +456,14 @@ function KnowledgeDetail({
             <div className="min-w-0 flex-1">
               <div className="truncate text-[0.8rem] font-medium">{k.filename}</div>
               <div className="label truncate text-[0.54rem]">
-                {k.source_type} · {new Date(k.created_at).toLocaleDateString("zh-CN")}
+                {k.source_type} · {new Date(k.created_at).toLocaleDateString()}
               </div>
             </div>
             {stored && (
               <button
                 type="button"
                 onClick={() => api.downloadUpload(stored.stored_name, stored.original_name)}
-                aria-label={`下载原件 ${stored.original_name}`}
+                aria-label={t("artifacts.downloadOriginal", stored.original_name)}
                 className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
               >
                 <IconDownload width={13} height={13} />
@@ -467,7 +473,7 @@ function KnowledgeDetail({
               type="button"
               onClick={() => removeEntry(k.id, k.filename)}
               disabled={busy === k.id}
-              aria-label={`删除 ${k.filename}`}
+              aria-label={t("artifacts.deleteOriginal", k.filename)}
               className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
             >
               {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
@@ -476,7 +482,7 @@ function KnowledgeDetail({
         );
       })}
       <div className="pt-1 text-center text-[0.6rem] text-[var(--text-muted)]">
-        修改请回到对话，例如「帮我整理知识库材料」
+        {t("artifacts.knowledgeModifyHint")}
       </div>
     </div>
   );
@@ -491,6 +497,7 @@ function ListDetail({
   empty: string;
   askText: string;
 }) {
+  const t = useT();
   if (items.length === 0) {
     return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{empty}</div>;
   }
@@ -510,7 +517,7 @@ function ListDetail({
         </div>
       ))}
       <div className="pt-1 text-center text-[0.6rem] text-[var(--text-muted)]">
-        修改请回到对话，例如「{askText}」
+        {t("artifacts.modifyHint", askText)}
       </div>
     </div>
   );

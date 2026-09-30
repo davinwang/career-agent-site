@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import type { ChatMessage } from "../../hooks/useSession";
 import ToolCallDisplay from "./ToolCallDisplay";
+import { useT } from "../../lib/i18n";
 
 /** Very light markdown: ```code fences``` and `inline code`. No deps. */
 function renderContent(text: string) {
@@ -45,10 +46,11 @@ function renderContent(text: string) {
 function fmtTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function MessageBubble({ message }: { message: ChatMessage }) {
+  const t = useT();
   const isUser = message.role === "user";
 
   return (
@@ -60,7 +62,7 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           color: "var(--color-paper-50)",
         }}
       >
-        {isUser ? "我" : "AI"}
+        {isUser ? t("chat.me") : "AI"}
       </div>
 
       <div className={`flex min-w-0 max-w-[85%] flex-col sm:max-w-[75%] ${isUser ? "items-end" : "items-start"}`}>

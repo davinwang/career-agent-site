@@ -10,6 +10,7 @@ import type {
   ProjectDoc,
 } from "../types/api";
 import type { ResumeData } from "../types/resume";
+import { t as i18nT } from "./i18n";
 
 /** A GitHub repo as returned by the official /user/repos endpoint. */
 export interface RepoInfo {
@@ -115,16 +116,16 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   try {
     res = await fetch(`${API_BASE}${path}`, { ...rest, headers: finalHeaders });
   } catch {
-    throw new ApiError("网络连接失败，请检查后端服务是否在线", 0);
+    throw new ApiError(i18nT("api.networkDown"), 0);
   }
 
   if (res.status === 401) {
     onUnauthorized();
-    throw new ApiError("登录已过期，请重新登录", 401);
+    throw new ApiError(i18nT("api.sessionExpired"), 401);
   }
 
   if (!res.ok) {
-    let message = `请求失败 (${res.status})`;
+    let message = i18nT("api.requestFailed", res.status);
     let detail: unknown;
     try {
       detail = await res.json();
@@ -238,7 +239,7 @@ export const api = {
       xhr.onload = () => {
         if (xhr.status === 401) {
           onUnauthorized();
-          reject(new ApiError("登录已过期，请重新登录", 401));
+          reject(new ApiError(i18nT("api.sessionExpired"), 401));
           return;
         }
         let parsed: unknown;
@@ -253,11 +254,11 @@ export const api = {
           const msg =
             parsed && typeof parsed === "object" && "error" in parsed
               ? String((parsed as { error: unknown }).error)
-              : `上传失败 (${xhr.status})`;
+              : i18nT("api.uploadFailed", xhr.status);
           reject(new ApiError(msg, xhr.status, parsed));
         }
       };
-      xhr.onerror = () => reject(new ApiError("上传失败：网络错误", 0));
+      xhr.onerror = () => reject(new ApiError(i18nT("api.uploadNetworkError"), 0));
       xhr.send(form);
     });
   },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../lib/api";
 import type { Session, Message } from "../types/api";
+import { useT } from "../lib/i18n";
 import { SectionHead, Card, Badge, Spinner, ErrorNote, EmptyState } from "../components/ui";
 import { IconSessions, IconSearch } from "../components/icons";
 
@@ -8,16 +9,17 @@ function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 8)}…` : id;
 }
 
-function fmt(iso: string): string {
+function fmt(iso: string, lang: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("zh-CN");
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(lang === "zh" ? "zh-CN" : "en-US");
 }
 
 /** Read-only transcript renderer for a recruiter session. */
 function Transcript({ messages, loading }: { messages: Message[]; loading: boolean }) {
-  if (loading) return <Spinner label="加载对话记录…" />;
+  const t = useT();
+  if (loading) return <Spinner label={t("sessions.loadingTranscript")} />;
   if (messages.length === 0)
-    return <div className="py-10 text-center text-sm text-[var(--text-muted)]">该会话暂无消息</div>;
+    return <div className="py-10 text-center text-sm text-[var(--text-muted)]">{t("sessions.noMessages")}</div>;
 
   return (
     <div className="space-y-4">
@@ -42,7 +44,7 @@ function Transcript({ messages, loading }: { messages: Message[]; loading: boole
                 color: "var(--color-paper-50)",
               }}
             >
-              {isUser ? "猎" : "AI"}
+              {isUser ? t("sessions.you") : "AI"}
             </div>
             <div className={`min-w-0 max-w-[80%] ${isUser ? "text-right" : ""}`}>
               <div
@@ -54,7 +56,7 @@ function Transcript({ messages, loading }: { messages: Message[]; loading: boole
               >
                 {m.content}
               </div>
-              <div className="label mt-1 px-1 text-[0.52rem]">{fmt(m.created_at)}</div>
+              <div className="label mt-1 px-1 text-[0.52rem]">{fmt(m.created_at, t.lang)}</div>
             </div>
           </div>
         );
@@ -64,6 +66,7 @@ function Transcript({ messages, loading }: { messages: Message[]; loading: boole
 }
 
 export default function Sessions() {
+  const t = useT();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +81,7 @@ export default function Sessions() {
       setSessions(r.sessions ?? []);
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "加载会话失败");
+      setError(err instanceof ApiError ? err.message : t("sessions.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +99,7 @@ export default function Sessions() {
       setMessages(r.messages ?? []);
     } catch (err) {
       setMessages([]);
-      setError(err instanceof ApiError ? err.message : "加载消息失败");
+      setError(err instanceof ApiError ? err.message : t("sessions.loadMsgsFailed"));
     } finally {
       setLoadingMsgs(false);
     }
@@ -114,7 +117,7 @@ export default function Sessions() {
 
   return (
     <div className="space-y-5">
-      <SectionHead title="猎头会话" en={`${sessions.length} recruiter session(s)`} />
+      <SectionHead title={t("sessions.title")} en={t.lang === "zh" ? t("sessions.titleEn", sessions.length) : undefined} />
 
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
@@ -122,7 +125,7 @@ export default function Sessions() {
         </span>
         <input
           className="input pl-9"
-          placeholder="按会话 ID 或日期筛选…"
+          placeholder={t("sessions.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -131,9 +134,9 @@ export default function Sessions() {
       {error && <ErrorNote message={error} />}
 
       {loading ? (
-        <Spinner label="加载会话…" />
+        <Spinner label={t("sessions.loading")} />
       ) : sessions.length === 0 ? (
-        <EmptyState icon={<IconSessions width={40} height={40} />} title="暂无猎头会话" hint="当猎头开始对话后会在此显示" />
+        <EmptyState icon={<IconSessions width={40} height={40} />} title={t("sessions.empty")} hint={t("sessions.emptyHint")} />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,20rem)_1fr]">
           {/* Session list */}
@@ -154,13 +157,13 @@ export default function Sessions() {
                     </span>
                     <Badge tone={active ? "accent" : "neutral"}>{s.side}</Badge>
                   </div>
-                  <div className="label text-[0.55rem]">创建 {fmt(s.created_at)}</div>
-                  <div className="label text-[0.55rem]">活跃 {fmt(s.updated_at)}</div>
+                  <div className="label text-[0.55rem]">{t("sessions.created")} {fmt(s.created_at, t.lang)}</div>
+                  <div className="label text-[0.55rem]">{t("sessions.active")} {fmt(s.updated_at, t.lang)}</div>
                 </button>
               );
             })}
             {filtered.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">无匹配会话</div>
+              <div className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">{t("sessions.noMatch")}</div>
             )}
           </Card>
 
@@ -170,14 +173,14 @@ export default function Sessions() {
               <>
                 <div className="mb-4 flex items-center justify-between border-b pb-3" style={{ borderColor: "var(--rule)" }}>
                   <span className="font-mono text-xs text-[var(--text-muted)]">{selected}</span>
-                  <Badge tone="neutral">只读</Badge>
+                  <Badge tone="neutral">{t("sessions.readonly")}</Badge>
                 </div>
                 <Transcript messages={messages} loading={loadingMsgs} />
               </>
             ) : (
               <div className="flex h-full min-h-[16rem] flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
                 <IconSessions width={34} height={34} />
-                <span className="text-sm">选择左侧会话查看对话记录</span>
+                <span className="text-sm">{t("sessions.pickOne")}</span>
               </div>
             )}
           </Card>

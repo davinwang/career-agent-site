@@ -1,4 +1,5 @@
 import type { ReactNode, HTMLAttributes } from "react";
+import { useT } from "../lib/i18n";
 import { IconSpinner, IconClose } from "./icons";
 
 /** Small uppercase section heading with an optional trailing action. */
@@ -35,10 +36,11 @@ export function Card({
 }
 
 export function Spinner({ label }: { label?: string }) {
+  const t = useT();
   return (
     <div className="flex items-center justify-center gap-2 py-10 text-[var(--text-muted)]">
       <IconSpinner width={18} height={18} />
-      <span className="label">{label ?? "加载中"}</span>
+      <span className="label">{label ?? t("common.loading")}</span>
     </div>
   );
 }

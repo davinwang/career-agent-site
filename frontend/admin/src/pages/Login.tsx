@@ -2,11 +2,14 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../stores/auth";
+import { useT } from "../lib/i18n";
 import { IconSpinner } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
+import LangSwitch from "../components/LangSwitch";
 
 export default function Login() {
   const login = useAuth((s) => s.login);
+  const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("");
@@ -21,7 +24,7 @@ export default function Login() {
     if (loading) return;
     setError(null);
     if (!username.trim() || !password) {
-      setError("请输入用户名和密码");
+      setError(t("login.errRequired"));
       return;
     }
     setLoading(true);
@@ -30,7 +33,7 @@ export default function Login() {
     if (ok) {
       navigate(from, { replace: true });
     } else {
-      setError("用户名或密码错误，或后端服务不可用");
+      setError(t("login.errInvalid"));
     }
   };
 
@@ -50,6 +53,9 @@ export default function Login() {
       />
 
       <div className="absolute right-4 top-4 z-10">
+        <span className="mr-2 inline-block align-middle">
+          <LangSwitch />
+        </span>
         <ThemeToggle />
       </div>
 
@@ -61,8 +67,8 @@ export default function Login() {
           >
             JA
           </div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">简历 Agent</h1>
-          <p className="label mt-2 text-[0.66rem]">Admin Console · 管理端登录</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight">{t("login.title")}</h1>
+          <p className="label mt-2 text-[0.66rem]">{t("login.subtitle")}</p>
         </div>
 
         <form
@@ -72,7 +78,7 @@ export default function Login() {
         >
           <div>
             <label htmlFor="u" className="label mb-1.5 block text-[0.62rem]">
-              用户名 / Username
+              {t("login.username")}
             </label>
             <input
               id="u"
@@ -87,7 +93,7 @@ export default function Login() {
 
           <div>
             <label htmlFor="p" className="label mb-1.5 block text-[0.62rem]">
-              密码 / Password
+              {t("login.password")}
             </label>
             <input
               id="p"
@@ -113,16 +119,16 @@ export default function Login() {
           <button type="submit" disabled={loading} className="btn btn-primary w-full py-2.5">
             {loading ? (
               <>
-                <IconSpinner width={16} height={16} /> 登录中…
+                <IconSpinner width={16} height={16} /> {t("login.submitting")}
               </>
             ) : (
-              "登 录"
+              t("login.submit")
             )}
           </button>
         </form>
 
         <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-          仅限候选人本人访问 · 受 JWT 保护
+          {t("login.footer")}
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../lib/api";
+import { useT } from "../lib/i18n";
 import { SectionHead, Card, Badge, Spinner, ErrorNote } from "./ui";
 import { IconCheck, IconSpinner, IconTrash } from "./icons";
 
@@ -30,6 +31,7 @@ function readFragmentResult(): { bound?: string; error?: string } {
 }
 
 export default function GithubSettings() {
+  const t = useT();
   const [status, setStatus] = useState<GithubStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [pat, setPat] = useState("");
@@ -45,7 +47,7 @@ export default function GithubSettings() {
       setStatus(await api.getGithubStatus());
       setError(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "加载失败");
+      setError(err instanceof ApiError ? err.message : t("github.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -55,10 +57,10 @@ export default function GithubSettings() {
     void load();
     const frag = readFragmentResult();
     if (frag.bound) {
-      setNotice(`GitHub 账号 @${frag.bound} 绑定成功`);
+      setNotice(t("github.boundOk", frag.bound));
       void load();
     } else if (frag.error) {
-      setError(`GitHub 绑定失败：${frag.error}`);
+      setError(t("github.boundFail", frag.error));
     }
   }, []);
 
@@ -69,12 +71,12 @@ export default function GithubSettings() {
     setError(null);
     try {
       const r = await api.saveGithubPat(trimmed);
-      setNotice(`PAT 已验证并托管（账号 @${r.login}）`);
+      setNotice(t("github.patSaved", r.login));
       setPat("");
       setRepos(null);
       void load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "保存失败");
+      setError(err instanceof ApiError ? err.message : t("github.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -83,22 +85,22 @@ export default function GithubSettings() {
   const removeCreds = async () => {
     try {
       await api.removeGithubCreds();
-      setNotice("已清除托管的 GitHub 凭证");
+      setNotice(t("github.credsCleared"));
       setRepos(null);
       void load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "删除失败");
+      setError(err instanceof ApiError ? err.message : t("github.deleteFailed"));
     }
   };
 
   const unbindOauth = async () => {
     try {
       await api.unbindGithubOauth();
-      setNotice("已解绑 GitHub 账号");
+      setNotice(t("github.oauthUnbound"));
       setRepos(null);
       void load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "解绑失败");
+      setError(err instanceof ApiError ? err.message : t("github.unbindFailed"));
     }
   };
 
@@ -107,7 +109,7 @@ export default function GithubSettings() {
       const { url } = await api.githubOauthStart();
       oauthWindow.current = window.open(url, "github-oauth", "width=680,height=760");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "无法发起 GitHub 授权");
+      setError(err instanceof ApiError ? err.message : t("github.oauthStartFailed"));
     }
   };
 
@@ -118,17 +120,17 @@ export default function GithubSettings() {
       const r = await api.listGithubRepos();
       setRepos(r.repos);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "获取仓库失败");
+      setError(err instanceof ApiError ? err.message : t("github.reposFailed"));
     } finally {
       setReposLoading(false);
     }
   };
 
-  if (loading) return <Spinner label="加载 GitHub 状态…" />;
+  if (loading) return <Spinner label={t("github.loading")} />;
 
   return (
     <div className="space-y-5">
-      <SectionHead title="GitHub 凭证" en="Credential hosting & account binding" />
+      <SectionHead title={t("github.title")} en={t.lang === "zh" ? t("github.subtitle") : undefined} />
 
       {notice && (
         <div
@@ -142,23 +144,23 @@ export default function GithubSettings() {
 
       {/* Current status */}
       <Card className="flex flex-wrap items-center gap-3 p-4">
-        <span className="label text-[0.6rem]">当前状态</span>
-        <Badge tone={status?.pat ? "moss" : "neutral"}>PAT {status?.pat ? "已托管" : "未托管"}</Badge>
+        <span className="label text-[0.6rem]">{t("github.currentStatus")}</span>
+        <Badge tone={status?.pat ? "moss" : "neutral"}>PAT {status?.pat ? t("github.patHosted") : t("github.patMissing")}</Badge>
         <Badge tone={status?.oauth.bound ? "moss" : "neutral"}>
-          OAuth {status?.oauth.bound ? `已绑定 @${status.oauth.login}` : "未绑定"}
+          OAuth {status?.oauth.bound ? t("github.oauthBound", status.oauth.login ?? "") : t("github.oauthMissing")}
         </Badge>
-        {status?.user && <span className="label text-[0.58rem]">生效账号 @{status.user}（{status.source}）</span>}
+        {status?.user && <span className="label text-[0.58rem]">{t("github.activeAccount", status.user)}（{status.source}）</span>}
         <div className="ml-auto flex gap-2">
           <button type="button" onClick={loadRepos} disabled={reposLoading} className="btn text-xs">
-            {reposLoading ? <IconSpinner width={14} height={14} /> : "拉取仓库列表"}
+            {reposLoading ? <IconSpinner width={14} height={14} /> : t("github.fetchRepos")}
           </button>
           {(status?.pat || status?.oauth.bound) && (
             <button
               type="button"
               onClick={removeCreds}
               className="focus-ring grid h-8 w-8 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--color-ember-500)]"
-              aria-label="清除全部凭证"
-              title="清除全部凭证"
+              aria-label={t("github.clearAll")}
+              title={t("github.clearAll")}
             >
               <IconTrash width={15} height={15} />
             </button>
@@ -170,7 +172,7 @@ export default function GithubSettings() {
       {repos && (
         <Card className="max-h-72 divide-y overflow-y-auto" style={{ borderColor: "var(--rule)" }}>
           {repos.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">该凭证可见 0 个仓库</div>
+            <div className="px-4 py-6 text-center text-sm text-[var(--text-muted)]">{t("github.noRepos")}</div>
           ) : (
             repos.map((r) => (
               <div key={r.full_name} className="flex items-center gap-3 px-4 py-2.5">
@@ -178,7 +180,7 @@ export default function GithubSettings() {
                   <div className="truncate font-mono text-xs">{r.full_name}</div>
                   {r.description && <div className="label mt-0.5 truncate text-[0.54rem]">{r.description}</div>}
                 </div>
-                {r.private && <Badge tone="warn">私有</Badge>}
+                {r.private && <Badge tone="warn">{t("common.private")}</Badge>}
                 {r.language && <Badge tone="neutral">{r.language}</Badge>}
                 <a
                   href={r.html_url}
@@ -197,11 +199,9 @@ export default function GithubSettings() {
       <div className="grid gap-5 lg:grid-cols-2">
         {/* PAT hosting */}
         <Card className="p-4">
-          <div className="label mb-2 text-[0.6rem]">方式一 · 托管 PAT</div>
+          <div className="label mb-2 text-[0.6rem]">{t("github.patTitle")}</div>
           <p className="mb-3 text-xs leading-relaxed text-[var(--text-muted)]">
-            在 GitHub → Settings → Developer settings → Fine-grained tokens
-            创建仅含 <span className="font-mono">repo</span> 权限的 token，粘贴到此处。
-            凭证以 AES-256-GCM 加密存储，仅用于拉取你的项目仓库。
+            {t("github.patHelp")}
           </p>
           <div className="flex gap-2">
             <input
@@ -213,25 +213,24 @@ export default function GithubSettings() {
               onKeyDown={(e) => e.key === "Enter" && savePat()}
             />
             <button type="button" onClick={savePat} disabled={saving || pat.trim().length < 20} className="btn shrink-0 text-xs">
-              {saving ? <IconSpinner width={14} height={14} /> : "验证并托管"}
+              {saving ? <IconSpinner width={14} height={14} /> : t("github.patSave")}
             </button>
           </div>
         </Card>
 
         {/* OAuth binding */}
         <Card className="p-4">
-          <div className="label mb-2 text-[0.6rem]">方式二 · 绑定 GitHub 账号</div>
+          <div className="label mb-2 text-[0.6rem]">{t("github.oauthTitle")}</div>
           <p className="mb-3 text-xs leading-relaxed text-[var(--text-muted)]">
-            通过 GitHub OAuth 授权（官方授权码流程）。需要服务端配置
-            <span className="font-mono"> GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET</span>。
+            {t("github.oauthHelp")}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" onClick={startOauth} className="btn text-xs">
-              使用 GitHub 登录绑定
+              {t("github.oauthBind")}
             </button>
             {status?.oauth.bound && (
               <button type="button" onClick={unbindOauth} className="label text-[0.6rem] hover:text-[var(--color-ember-500)]">
-                解绑
+                {t("github.unbind")}
               </button>
             )}
           </div>

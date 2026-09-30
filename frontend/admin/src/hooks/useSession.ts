@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, API_BASE, getToken, ApiError } from "../lib/api";
 import { parseSSE } from "../lib/sse";
+import { t as i18nT } from "../lib/i18n";
 
 export interface ToolCall {
   id: string;
@@ -179,7 +180,7 @@ export function useSession() {
         });
 
         if (!res.ok || !res.body) {
-          throw new ApiError(`Agent 请求失败 (${res.status})`, res.status);
+          throw new ApiError(i18nT("api.agentFailed", res.status), res.status);
         }
 
         for await (const evt of parseSSE(res)) {
@@ -232,7 +233,7 @@ export function useSession() {
               });
               break;
             case "RUN_ERROR":
-              setError(String(evt.delta ?? "Agent 运行出错"));
+              setError(String(evt.delta ?? i18nT("api.agentError")));
               break;
             case "RUN_FINISHED":
               // handled after loop
@@ -243,7 +244,7 @@ export function useSession() {
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          const message = err instanceof ApiError ? err.message : "无法连接到 Agent 服务";
+          const message = err instanceof ApiError ? err.message : i18nT("api.agentUnreachable");
           setError(message);
           patchLast((m) =>
             m.content ? { ...m, streaming: false } : { ...m, content: `⚠ ${message}`, streaming: false },
@@ -287,7 +288,7 @@ export function useSession() {
       setSessionId(session.id);
       return session.id;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "新建会话失败");
+      setError(err instanceof ApiError ? err.message : i18nT("api.newSessionFailed"));
       return null;
     }
   }, []);

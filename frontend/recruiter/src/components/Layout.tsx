@@ -12,6 +12,8 @@ interface Props {
   lang: string;
   languages: string[];
   onLangChange: (lang: string) => void;
+  uiLang: string;
+  onUiLangChange: (lang: string) => void;
   t: UiStrings;
   /** left pane (desktop) / full screen (mobile) */
   resume: ReactNode;
@@ -42,6 +44,8 @@ export function Layout({
   lang,
   languages,
   onLangChange,
+  uiLang,
+  onUiLangChange,
   t,
   resume,
   chat,
@@ -107,6 +111,15 @@ export function Layout({
               </span>
             </span>
             <LanguageSwitch languages={languages} value={lang} onChange={onLangChange} t={t} />
+            <button
+              type="button"
+              className="seg__btn rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
+              aria-label={uiLang === 'zh' ? 'Switch UI language to English' : '切换界面语言为中文'}
+              title={uiLang === 'zh' ? 'UI Language' : '界面语言'}
+              onClick={() => onUiLangChange(uiLang === 'zh' ? 'en' : 'zh')}
+            >
+              {uiLang === 'zh' ? 'EN' : '中'}
+            </button>
             <ThemeToggle t={t} />
           </div>
         </div>

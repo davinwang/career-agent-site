@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useT } from "../lib/i18n";
 
 /**
  * OAuth callback landing page. GitHub redirects here with ?code=…; the backend
@@ -6,6 +7,7 @@ import { useEffect, useState } from "react";
  * This page reads the fragment, shows the result, and sends the user onward.
  */
 export default function GithubCallback() {
+  const t = useT();
   const [state, setState] = useState<{ bound?: string; error?: string }>({});
   const [count, setCount] = useState(3);
 
@@ -34,19 +36,19 @@ export default function GithubCallback() {
       {state.bound ? (
         <>
           <div className="font-display text-2xl font-semibold" style={{ color: "var(--color-moss-500)" }}>
-            ✓ GitHub @{state.bound} 绑定成功
+            {t("oauth.boundOk", state.bound)}
           </div>
-          <p className="text-sm text-[var(--text-muted)]">{count} 秒后返回管理端…</p>
+          <p className="text-sm text-[var(--text-muted)]">{t("oauth.backIn", count)}</p>
         </>
       ) : state.error ? (
         <>
           <div className="font-display text-xl font-semibold" style={{ color: "var(--color-ember-500)" }}>
-            绑定失败：{decodeURIComponent(state.error)}
+            {t("oauth.boundFail", decodeURIComponent(state.error))}
           </div>
-          <p className="text-sm text-[var(--text-muted)]">{count} 秒后返回管理端…</p>
+          <p className="text-sm text-[var(--text-muted)]">{t("oauth.backIn", count)}</p>
         </>
       ) : (
-        <div className="text-sm text-[var(--text-muted)]">处理 GitHub 授权回调…</div>
+        <div className="text-sm text-[var(--text-muted)]">{t("oauth.processing")}</div>
       )}
     </div>
   );

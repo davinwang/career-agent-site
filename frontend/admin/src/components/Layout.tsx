@@ -5,13 +5,9 @@ import { useUi } from "../stores/ui";
 import { useAuth } from "../stores/auth";
 import Sidebar from "./Sidebar";
 import ThemeToggle from "./ThemeToggle";
+import LangSwitch from "./LangSwitch";
+import { useT } from "../lib/i18n";
 import { IconMenu, IconClose, IconLogout, IconChevron } from "./icons";
-
-const TITLES: Record<string, { zh: string; en: string }> = {
-  "/": { zh: "概览", en: "Dashboard" },
-  "/chat": { zh: "助手", en: "Career Mentor" },
-  "/sessions": { zh: "会话", en: "Recruiter Sessions" },
-};
 
 export default function Layout() {
   const { pathname } = useLocation();
@@ -22,12 +18,16 @@ export default function Layout() {
   const setMobileOpen = useUi((s) => s.setMobileOpen);
   const username = useAuth((s) => s.username);
   const logout = useAuth((s) => s.logout);
+  const t = useT();
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, setMobileOpen]);
 
-  const title = TITLES[pathname] ?? { zh: "管理端", en: "Admin" };
+  const titleKey =
+    pathname === "/" ? "nav.dashboard" : pathname.startsWith("/chat") ? "nav.chat" : pathname.startsWith("/sessions") ? "nav.sessions" : "nav.adminTitle";
+  const titleEnKey =
+    pathname === "/" ? "nav.dashboardHint" : pathname.startsWith("/chat") ? "nav.chatTitle" : pathname.startsWith("/sessions") ? "nav.sessionsTitle" : "nav.adminTitle";
   const rail = collapsed ? "4rem" : "15rem";
 
   const handleLogout = () => {
@@ -51,7 +51,7 @@ export default function Layout() {
         <button
           type="button"
           onClick={toggleCollapsed}
-          aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
           className="focus-ring absolute -right-3 top-7 grid h-6 w-6 place-items-center rounded-full border shadow-sm transition-colors hover:text-[var(--accent)]"
           style={{ background: "var(--surface)", borderColor: "var(--rule)" }}
         >
@@ -77,7 +77,7 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              aria-label="关闭菜单"
+              aria-label={t("nav.closeMenu")}
               className="absolute right-3 top-5 grid h-8 w-8 place-items-center rounded-md text-[var(--text-muted)]"
             >
               <IconClose width={18} height={18} />
@@ -100,7 +100,7 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              aria-label="打开菜单"
+              aria-label={t("nav.openMenu")}
               className="focus-ring grid h-9 w-9 place-items-center rounded-md border lg:hidden"
               style={{ borderColor: "var(--rule)" }}
             >
@@ -108,20 +108,21 @@ export default function Layout() {
             </button>
             <div className="min-w-0 leading-tight">
               <h1 className="truncate font-display text-lg font-semibold tracking-tight sm:text-xl">
-                {title.zh}
+                {t(titleKey)}
               </h1>
-              <div className="label hidden text-[0.6rem] sm:block">{title.en}</div>
+              <div className="label hidden text-[0.6rem] sm:block">{t(titleEnKey)}</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {username && <span className="label hidden text-[0.62rem] md:block">@{username}</span>}
+            <LangSwitch />
             <ThemeToggle />
             <button
               type="button"
               onClick={handleLogout}
-              aria-label="退出登录"
-              title="退出登录"
+              aria-label={t("nav.logout")}
+              title={t("nav.logout")}
               className="focus-ring grid h-9 w-9 place-items-center rounded-full border transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
               style={{ borderColor: "var(--rule)", color: "var(--text-muted)" }}
             >

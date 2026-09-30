@@ -1,4 +1,5 @@
 import { API_BASE } from "../lib/api";
+import { t } from "../lib/i18n";
 import type { ResumeData } from "../types/resume";
 
 /** Tiny className joiner (no clsx dependency). */
@@ -31,7 +32,7 @@ export default function ResumePreview({ data }: { data: ResumeData }) {
       {/* Header */}
       <header className="border-b pb-5" style={{ borderColor: "var(--rule)" }}>
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          {data.name || "未命名"}
+          {data.name || t("common.unnamed")}
         </h1>
         {data.status && (
           <p className="mt-1.5 text-sm text-[var(--text-muted)]">{data.status}</p>

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./stores/auth";
 import { UNAUTHORIZED_EVENT } from "./lib/api";
+import { I18nProvider } from "./lib/i18n";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
@@ -39,30 +40,32 @@ export default function App() {
   useUnauthorizedSync();
 
   return (
-    <BrowserRouter basename="/admin">
-      <Routes>
-        <Route path="/login" element={<LoginRoute />} />
-        {/* OAuth callback: outside the layout (no auth requirement — the
-            backend already authenticated the exchange). */}
-        <Route path="github-callback" element={<GithubCallback />} />
-        <Route
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="chat" element={<Chat />} />
-          <Route path="sessions" element={<Sessions />} />
-          {/* Legacy form pages removed — redirect to the agent chat workbench. */}
-          <Route path="resume" element={<Navigate to="/chat" replace />} />
-          <Route path="upload" element={<Navigate to="/chat" replace />} />
-          <Route path="projects" element={<Navigate to="/chat" replace />} />
-          <Route path="skills" element={<Navigate to="/chat" replace />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <I18nProvider>
+      <BrowserRouter basename="/admin">
+        <Routes>
+          <Route path="/login" element={<LoginRoute />} />
+          {/* OAuth callback: outside the layout (no auth requirement — the
+              backend already authenticated the exchange). */}
+          <Route path="github-callback" element={<GithubCallback />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="sessions" element={<Sessions />} />
+            {/* Legacy form pages removed — redirect to the agent chat workbench. */}
+            <Route path="resume" element={<Navigate to="/chat" replace />} />
+            <Route path="upload" element={<Navigate to="/chat" replace />} />
+            <Route path="projects" element={<Navigate to="/chat" replace />} />
+            <Route path="skills" element={<Navigate to="/chat" replace />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </I18nProvider>
   );
 }

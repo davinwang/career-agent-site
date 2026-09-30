@@ -5,13 +5,8 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import ArtifactPanel from "./ArtifactPanel";
 import { ErrorNote, EmptyState } from "../ui";
+import { useT } from "../../lib/i18n";
 import { IconChat, IconChevron, IconResume } from "../icons";
-
-const SUGGESTIONS = [
-  "我有一份旧简历，先给你看看哪里需要更新",
-  "帮我分析一个项目的源码仓库，提炼简历条目",
-  "我想往 AI 架构方向转型，帮我评估和规划",
-];
 
 interface SessionItem {
   id: string;
@@ -21,7 +16,7 @@ interface SessionItem {
 
 function fmt(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("zh-CN", {
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, {
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -30,18 +25,19 @@ function fmt(iso: string): string {
 }
 
 /** Title of a chat = first user message (fetched lazily per open dropdown). */
-async function fetchTitle(id: string): Promise<string> {
+async function fetchTitle(id: string, emptyTitle: string, unreadable: string): Promise<string> {
   try {
     const { messages } = await api.getSessionMessages(id);
     const first = messages.find((m) => m.role === "user");
     const text = first?.content?.trim() ?? "";
-    return text ? (text.length > 24 ? `${text.slice(0, 24)}…` : text) : "（空对话）";
+    return text ? (text.length > 24 ? `${text.slice(0, 24)}…` : text) : emptyTitle;
   } catch {
-    return "（无法读取）";
+    return unreadable;
   }
 }
 
 export default function ChatPanel() {
+  const t = useT();
   const {
     sessionId, messages, loadingHistory, streaming, error,
     send, stop, switchSession, newSession, setError,
@@ -92,7 +88,7 @@ export default function ChatPanel() {
       });
       await Promise.all(
         items.map(async (it) => {
-          const title = await fetchTitle(it.id);
+          const title = await fetchTitle(it.id, t("chat.emptyTitle"), t("chat.emptyUnreadable"));
           setTitles((prev) => ({ ...prev, [it.id]: title }));
         }),
       );
@@ -133,18 +129,18 @@ export default function ChatPanel() {
       const res = await api.uploadFile(file);
       const isImage = /\.(png|jpe?g|webp|gif)$/i.test(file.name);
       const note = isImage
-        ? `我上传了图片「${res.original_name}」（已存储为 ${res.stored_name}）。如果适合作为简历/公司 logo 照片，请把它设置到简历 photo 字段（用 /uploads/${res.stored_name}）。`
-        : `我上传了文件「${res.original_name}」（已存储为 ${res.stored_name}），请用 ingestFile 解析并纳入知识库。`;
+        ? t("chat.uploadNoteImage", res.original_name, res.stored_name)
+        : t("chat.uploadNoteFile", res.original_name, res.stored_name);
       await send(note);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "文件上传失败");
+      setError(err instanceof Error ? err.message : t("chat.uploadFailed"));
     }
   };
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="label text-[0.62rem]">求职导师 · Career Mentor</div>
+        <div className="label text-[0.62rem]">{t("chat.brand")}</div>
         <div className="flex items-center gap-2" ref={listRef}>
           {/* Session switcher */}
           <div className="relative">
@@ -156,7 +152,7 @@ export default function ChatPanel() {
               aria-expanded={listOpen}
               aria-haspopup="listbox"
             >
-              会话
+              {t("chat.sessions")}
               <IconChevron
                 width={11}
                 height={11}
@@ -166,7 +162,7 @@ export default function ChatPanel() {
             {listOpen && (
               <div
                 role="listbox"
-                aria-label="会话列表"
+                aria-label={t("chat.sessionList")}
                 className="absolute right-0 z-30 mt-1 max-h-[60vh] w-72 overflow-y-auto rounded-lg border shadow-lg"
                 style={{
                   borderColor: "var(--rule)",
@@ -176,7 +172,7 @@ export default function ChatPanel() {
               >
                 {sessions.length === 0 ? (
                   <div className="px-3 py-4 text-center text-[0.72rem] text-[var(--text-muted)]">
-                    暂无历史会话
+                    {t("chat.noHistory")}
                   </div>
                 ) : (
                   sessions.map((s) => {
@@ -201,7 +197,7 @@ export default function ChatPanel() {
                           style={active ? { color: "var(--accent)" } : undefined}
                         >
                           {titles[s.id] ?? "…"}
-                          {active && <span className="label ml-1.5 text-[0.55rem]">当前</span>}
+                          {active && <span className="label ml-1.5 text-[0.55rem]">{t("common.current")}</span>}
                         </span>
                         <span className="label text-[0.55rem]">{fmt(s.updated_at)}</span>
                       </button>
@@ -216,7 +212,7 @@ export default function ChatPanel() {
                     className="w-full rounded-md border px-3 py-1.5 text-center text-[0.72rem] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
                     style={{ borderColor: "var(--rule)" }}
                   >
-                    {creating ? "创建中…" : "＋ 新建对话"}
+                    {creating ? t("chat.creating") : t("chat.newChat")}
                   </button>
                 </div>
               </div>
@@ -242,9 +238,9 @@ export default function ChatPanel() {
           >
             <IconResume width={12} height={12} />
           </span>
-          <span>对话产出 · 归档</span>
+          <span>{t("chat.artifactsTitle")}</span>
           <span className="hidden truncate text-[0.56rem] font-normal opacity-70 md:inline">
-            简历、材料、项目、技能卡都存放在这里
+            {t("chat.artifactsHint")}
           </span>
           <IconChevron
             className="ml-auto shrink-0"
@@ -279,17 +275,17 @@ export default function ChatPanel() {
 
           {loadingHistory ? (
             <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
-              <span className="label">加载历史消息…</span>
+              <span className="label">{t("chat.loadingHistory")}</span>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-5">
               <EmptyState
                 icon={<IconChat width={40} height={40} />}
-                title="和你的求职导师聊聊"
-                hint="上传简历、补充材料、分析项目、规划转型 —— 一切通过对话完成，产出在上方的「对话产出 · 归档」里。"
+                title={t("chat.emptyWelcome")}
+                hint={t("chat.emptyHint")}
               />
               <div className="flex w-full max-w-md flex-col gap-2">
-                {SUGGESTIONS.map((s) => (
+                {[t("chat.suggestion1"), t("chat.suggestion2"), t("chat.suggestion3")].map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -313,7 +309,7 @@ export default function ChatPanel() {
           </div>
           {streaming && (
             <button type="button" onClick={stop} className="btn shrink-0">
-              停止
+              {t("chat.stop")}
             </button>
           )}
         </div>
