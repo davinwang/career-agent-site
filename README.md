@@ -92,8 +92,8 @@ fonts/              Alibaba PuHuiTi for PDF generation
 Requirements: Docker (+ Compose v2). For development: Node 22, npm.
 
 ```bash
-git clone https://github.com/davinwang/job-agent-site.git
-cd job-agent-site/deploy
+git clone https://github.com/davinwang/career-agent-site.git
+cd career-agent-site/deploy
 cp .env.example .env          # then edit: LLM key, admin creds, JWT_SECRET
 docker compose up --build -d
 docker compose exec backend node dist/db/seed.js   # first boot only

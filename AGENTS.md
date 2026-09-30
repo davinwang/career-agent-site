@@ -1,4 +1,4 @@
-# AGENTS.md — job-agent-site
+# AGENTS.md — career-agent-site (formerly job-agent-site)
 
 Personal resume site + AI chat agents for 王栋 (Davin Wang), served at https://aboutme.davin.wang (host port 8090).
 
