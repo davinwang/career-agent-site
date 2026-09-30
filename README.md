@@ -10,6 +10,10 @@
 
 > English | [中文](#中文说明)
 
+![career-agent-site — recruiter portal (left) with the candidate's AI agent; mentor workbench (right) where everything is produced through conversation](docs/img/recruiter-portal.png)
+
+<p align="center"><em>Public recruiter portal — the candidate's AI agent answers from the live résumé.</em></p>
+
 ---
 
 ## Why: a candidate-side answer to AI recruiting
@@ -34,6 +38,10 @@ Most PDF resumes are static, one-shot, and go stale the moment they're exported.
 
 - **Recruiter-facing agent (public)** — visitors at [aboutme.davin.wang](https://aboutme.davin.wang) chat with an agent that answers questions about the candidate's experience, projects and skills. It reads the live resume data, so every answer is current. It is **hard-wired read-only** and guarded against prompt injection, source-code exfiltration and privacy fishing.
 - **Career-mentor agent (admin)** — the candidate manages everything through conversation: uploading a rough résumé PDF for gap analysis, feeding project git URLs for automated source-code analysis, attaching photos and documents, editing any resume section, and configuring the recruiter agent's behaviour — all in chat, no forms. The mentor also advises on career direction, transition planning, and preparing résumés in additional languages.
+
+![mentor workbench — artifact cards and multi-step tool orchestration through conversation](docs/img/mentor-workbench.png)
+
+<p align="center"><em>Mentor workbench — résumé updates, repo analysis and config all happen in one conversation; artifacts accumulate in the archive cards.</em></p>
 
 ## Key features
 
