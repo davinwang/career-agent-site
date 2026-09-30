@@ -18,7 +18,6 @@ import {
   ChatIcon,
   ChevronDown,
   CloseIcon,
-  RefreshIcon,
   SendIcon,
   SparkIcon,
   StopIcon,
@@ -197,11 +196,6 @@ export function ChatPanel({
     submit();
   };
 
-  const handleClear = () => {
-    if (messages.length && !window.confirm(t.chat.clearConfirm)) return;
-    clear();
-  };
-
   const handleNewThread = () => {
     if (messages.length && !window.confirm(t.chat.clearConfirm)) return;
     clear();
@@ -247,17 +241,6 @@ export function ChatPanel({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={handleClear}
-            title={isZh ? '清空当前对话' : 'Clear conversation'}
-            aria-label={isZh ? '清空当前对话' : 'Clear conversation'}
-            disabled={!messages.length}
-            style={{ opacity: messages.length ? 1 : 0.4 }}
-          >
-            <RefreshIcon className="h-4 w-4" />
-          </button>
           <button
             type="button"
             className="icon-btn"
