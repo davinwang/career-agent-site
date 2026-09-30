@@ -120,6 +120,19 @@ cd frontend/recruiter && npm run dev   # :5173 (proxies /api, /ag-ui)
 cd frontend/admin && npm run dev       # :5174
 ```
 
+## Roadmap
+
+Where this is heading — from a personal tool to **career infrastructure owned by the candidate**:
+
+- [ ] **Mentor memory** — long-term career timeline the mentor agent accumulates across job cycles, not just one search
+- [ ] **Interview simulator** — role-play interviews against the live résumé, with gap feedback feeding back into the mentor loop
+- [ ] **Cover letters & outreach** — grounded generation from the same single source of truth
+- [ ] **Multi-résumé variants** — per-target-role positioning profiles derived from one master timeline
+- [ ] **Portable career data** — export the structured career graph (not just PDFs), candidate-owned and agent-readable
+- [ ] **Federation of guardrails** — shared, community-maintained attack patterns for the recruiter-facing agent
+
+Want to steer? Open a [feature idea](.github/ISSUE_TEMPLATE/feature_request.md) — contributions that strengthen the candidate's side are prioritized.
+
 ## Design decisions
 
 - **Conversation as the only admin interface.** Forms drift out of sync with agent capabilities; the chat interface cannot. Every admin capability is an agent tool, and the UI is a view over the same artifacts.

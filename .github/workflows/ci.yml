@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, recruiter, admin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/recruiter/package-lock.json
+            frontend/admin/package-lock.json
+
+      - name: Install deps
+        working-directory: ${{ matrix.component == 'backend' && 'backend' || format('frontend/{0}', matrix.component) }}
+        run: npm ci
+
+      - name: Typecheck + build
+        working-directory: ${{ matrix.component == 'backend' && 'backend' || format('frontend/{0}', matrix.component) }}
+        run: npm run build
