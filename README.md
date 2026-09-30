@@ -12,6 +12,22 @@
 
 ---
 
+## Why: a candidate-side answer to AI recruiting
+
+AI in recruiting today mostly serves the **buyer side**: sourcing bots, ATS keyword filters, interviewer copilots. The candidate gets a static PDF and prays. This project is built **from the candidate's seat**:
+
+- **Your story, told by your own agent.** The recruiter-facing agent is the candidate's representative, not a company bot. It answers accurately from published data, never oversells, and knows when to say "let me confirm and get back to you."
+- **The resume becomes a living service.** Instead of exporting a PDF every job change, the candidate maintains one structured source of truth; every recruiter interaction reads the current version.
+- **Data stays with the candidate.** Self-hosted, single SQLite file, no third-party ATS in the middle. The candidate decides what is published and in which language.
+
+And because job hunting is a career problem, not a document problem, the admin side is deliberately built as a **career mentor, not a resume editor**:
+
+- It diagnoses a stale résumé and tells you what's missing — then coaches you through fixing it.
+- It asks what kind of work you actually want, evaluates transition options (e.g., 20-year fintech architect → AI architecture roles), and suggests positioning.
+- It prepares you for interviews, and proactively raises things a good mentor would: "targeting foreign firms? let's prepare an English résumé."
+
+The résumé, the repo analysis, the language versions — those are **byproducts of the coaching conversation**, which is why the admin interface has no forms.
+
 ## What it is
 
 Most PDF resumes are static, one-shot, and go stale the moment they're exported. This project replaces the static resume with **two AI agents sharing one living resume database**:
@@ -118,6 +134,10 @@ cd frontend/admin && npm run dev       # :5174
 ---
 
 ## 中文说明
+
+**为什么做这个项目**：当下 AI 在招聘中的应用几乎都站在买方（企业侧）——Sourcing 机器人、ATS 关键词筛选、面试官副驾。候选人手里只有一份静态 PDF。本项目站在**候选人的立场**：让候选人拥有自己的 Agent 去讲述自己的故事，让简历成为可维护、可多语言发布的在线服务，数据完全自持（单文件 SQLite），不经过任何第三方 ATS。
+
+管理端刻意做成**职业导师而非简历编辑器**：求职本质是职业问题而非文档问题。导师会诊断旧简历的差距并引导补强，会追问你到底想做什么工作、评估转型路径（如 20 年金融科技架构师 → AI 架构方向），会做面试辅导，也会像好导师一样主动提醒——"要投外企？那我们准备一份英文简历"。简历、项目分析、多语言版本，都只是这场辅导对话的副产品——这就是管理端没有表单的原因。
 
 把静态 PDF 简历换成**两个共享同一份在线简历数据的 AI Agent**：
 
