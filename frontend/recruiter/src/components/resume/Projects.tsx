@@ -59,7 +59,14 @@ export function Projects({ items, lang, t }: Props) {
               key={`${project.name}-${i}`}
               index={i}
               project={project}
-              questions={questions[project.name] ?? []}
+              // Repo names are shorter than résumé project titles ("career-agent-site"
+              // vs "career-agent-site — Career Mentor Agent"), so match by prefix
+              // in either direction.
+              questions={
+                Object.entries(questions).find(
+                  ([k]) => project.name.startsWith(k) || k.startsWith(project.name),
+                )?.[1] ?? []
+              }
               t={t}
               onAsk={ask}
             />
