@@ -1,4 +1,4 @@
-import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useCallback, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import ChatPanel from './components/ChatPanel';
 import Layout from './components/Layout';
 import ResumePanel from './components/ResumePanel';
@@ -54,9 +54,22 @@ function RecruiterPortal() {
   const { data, loading, error, offline, lang, setLang, languages, reload } = useResume();
   // Visitor-chosen skin — applies data-skin to <html>, persisted locally.
   useSkin();
-  const { uiLang } = useUiLang();
+  const { uiLang, setUiLang } = useUiLang();
   const t = getUi(uiLang);
   const isZh = uiLang.toLowerCase().startsWith('zh');
+
+  /**
+   * One switch drives both dimensions: the résumé DATA language and the UI
+   * chrome language. Keeping them in lockstep matches visitor expectation —
+   * picking English must also translate 下载/主题/问候语, not just the dossier.
+   */
+  const handleLangChange = useCallback(
+    (next: string) => {
+      setLang(next);
+      setUiLang(next.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+    },
+    [setLang, setUiLang],
+  );
 
   // Keep <html lang> and the tab title in sync with the active dossier.
   useEffect(() => {
@@ -75,7 +88,7 @@ function RecruiterPortal() {
       statusLine={data?.status}
       lang={lang}
       languages={languages}
-      onLangChange={setLang}
+      onLangChange={handleLangChange}
       t={t}
       resume={
         <ResumePanel
