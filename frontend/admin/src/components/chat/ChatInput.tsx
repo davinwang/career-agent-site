@@ -222,7 +222,7 @@ export default function ChatInput({
           onKeyDown={onKeyDown}
           rows={1}
           disabled={disabled}
-          placeholder={t("chat.inputPlaceholder")}
+          placeholder={t("input.placeholder")}
           className="max-h-[180px] flex-1 resize-none bg-transparent px-1 py-2 text-[0.9rem] leading-relaxed outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
           style={{ color: "var(--text)" }}
         />

@@ -65,6 +65,20 @@ export default function ChatPanel() {
     }
   }, [messages]);
 
+  // Keep the session count fresh for the artifacts "会话" cell (cheap list-only
+  // fetch; titles are only resolved for the open dropdown).
+  const loadSessionCount = useCallback(async () => {
+    try {
+      const r = await api.listAdminSessions();
+      setSessions(r.sessions ?? []);
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+  useEffect(() => {
+    void loadSessionCount();
+  }, [loadSessionCount, refreshKey, sessionId]);
+
   // Auto-scroll to the newest content.
   useEffect(() => {
     const el = scrollRef.current;
@@ -255,7 +269,14 @@ export default function ChatPanel() {
             className="mt-2 max-h-[46vh] overflow-y-auto rounded-lg border p-3"
             style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
           >
-            <ArtifactPanel refreshKey={refreshKey} onAsk={send} onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }} />
+            <ArtifactPanel
+              refreshKey={refreshKey}
+              onAsk={send}
+              onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }}
+              sessionCount={sessions.length}
+              activeSessionId={sessionId}
+              onSwitchSession={(id) => switchSession(id)}
+            />
           </div>
         )}
       </div>

@@ -10,6 +10,7 @@ import {
   IconUpload,
   IconProjects,
   IconSkills,
+  IconSessions,
   IconClose,
   IconDownload,
   IconSpinner,
@@ -24,16 +25,24 @@ interface Artifacts {
   uploads?: UploadOriginal[];
 }
 
+interface SessionItem {
+  id: string;
+  updated_at: string;
+  created_at: string;
+}
+
 const GRID_CELLS = [
   { kind: "resume", labelKey: "artifacts.resume", enKey: "artifacts.resumeEn" },
   { kind: "knowledge", labelKey: "artifacts.docs", enKey: "artifacts.docsEn" },
   { kind: "projects", labelKey: "artifacts.projects", enKey: "artifacts.projectsEn" },
   { kind: "skills", labelKey: "artifacts.skills", enKey: "artifacts.skillsEn" },
+  { kind: "sessions", labelKey: "chat.sessions", enKey: "chat.sessionList" },
 ] as const;
 
 type CellKind = (typeof GRID_CELLS)[number]["kind"];
 
-function countFor(a: Artifacts | null, kind: CellKind): number {
+function countFor(a: Artifacts | null, kind: CellKind, sessionCount: number): number {
+  if (kind === "sessions") return sessionCount;
   if (!a) return 0;
   switch (kind) {
     case "resume":
@@ -57,6 +66,8 @@ function iconFor(kind: CellKind) {
       return IconProjects;
     case "skills":
       return IconSkills;
+    case "sessions":
+      return IconSessions;
   }
 }
 
@@ -84,16 +95,25 @@ export function useArtifacts(refreshKey: number) {
   return { data, loading };
 }
 
-/** The nine-grid (four-cell) artifact panel beside the chat. */
+/** The artifact strip (five cells in one row) beside the chat. */
 export default function ArtifactPanel({
   refreshKey,
   onAsk,
   onOpenChange,
+  sessionCount = 0,
+  activeSessionId = null,
+  onSwitchSession,
 }: {
   refreshKey: number;
   onAsk: (text: string) => void;
   /** Called when the user closes the detail view (used by the parent strip to collapse). */
   onOpenChange?: (open: boolean) => void;
+  /** Number of admin sessions (for the 会话 cell badge). */
+  sessionCount?: number;
+  /** Currently active session id (highlights the sessions detail list). */
+  activeSessionId?: string | null;
+  /** Switch the chat to another session. */
+  onSwitchSession?: (id: string) => void;
 }) {
   const t = useT();
   // Combine parent refreshKey (assistant tool-call turns) with local bumps
@@ -112,11 +132,11 @@ export default function ArtifactPanel({
         {loading && <IconSpinner width={14} height={14} />}
       </div>
 
-      {/* Grid: 2x2 on the panel; becomes the "nine-grid" on narrow widths */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* Grid: five cells in a single row on PC; wraps to a grid on narrow widths */}
+      <div className="grid grid-cols-5 gap-2 max-lg:grid-cols-3 max-sm:grid-cols-2">
         {GRID_CELLS.map((cell) => {
           const Icon = iconFor(cell.kind);
-          const count = countFor(data, cell.kind);
+          const count = countFor(data, cell.kind, sessionCount);
           const empty = count === 0;
           return (
             <button
@@ -146,7 +166,15 @@ export default function ArtifactPanel({
       {/* Detail view for the opened cell */}
       {openKind && (
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-lg border p-3" style={{ borderColor: "var(--rule)" }}>
-          <Detail kind={openKind} data={data} onAsk={onAsk} onClose={() => { setOpenKind(null); onOpenChange?.(false); }} onRefresh={bumpRefresh} />
+          <Detail
+            kind={openKind}
+            data={data}
+            onAsk={onAsk}
+            onClose={() => { setOpenKind(null); onOpenChange?.(false); }}
+            onRefresh={bumpRefresh}
+            activeSessionId={activeSessionId}
+            onSwitchSession={onSwitchSession}
+          />
         </div>
       )}
 
@@ -163,12 +191,16 @@ function Detail({
   onAsk,
   onClose,
   onRefresh,
+  activeSessionId = null,
+  onSwitchSession,
 }: {
   kind: CellKind;
   data: Artifacts | null;
   onAsk: (text: string) => void;
   onClose: () => void;
   onRefresh: () => void;
+  activeSessionId?: string | null;
+  onSwitchSession?: (id: string) => void;
 }) {
   const t = useT();
   const cell = GRID_CELLS.find((c) => c.kind === kind)!;
@@ -177,7 +209,7 @@ function Detail({
     <div>
       <div className="mb-3 flex items-center justify-between">
         <span className="label text-[0.6rem]">
-          {t(cell.labelKey)} · {t(cell.enKey)}
+          {kind === "sessions" ? t(cell.enKey) : `${t(cell.labelKey)} · ${t(cell.enKey)}`}
         </span>
         <button
           type="button"
@@ -206,7 +238,7 @@ function Detail({
           empty={t("artifacts.emptyProjects")}
           askText={t("artifacts.askProject")}
         />
-      ) : (
+      ) : kind === "skills" ? (
         <ListDetail
           items={data.skills.map((s) => ({
             id: s.id,
@@ -217,9 +249,88 @@ function Detail({
           empty={t("artifacts.emptySkills")}
           askText={t("artifacts.askSkills")}
         />
+      ) : (
+        <SessionsDetail activeSessionId={activeSessionId} onSwitchSession={onSwitchSession} />
       )}
     </div>
   );
+}
+
+/** Admin chat sessions list — click a row to switch the conversation. */
+function SessionsDetail({
+  activeSessionId,
+  onSwitchSession,
+}: {
+  activeSessionId?: string | null;
+  onSwitchSession?: (id: string) => void;
+}) {
+  const t = useT();
+  const [sessions, setSessions] = useState<SessionItem[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const r = await api.listAdminSessions();
+        if (active) setSessions(r.sessions ?? []);
+      } catch {
+        if (active) setSessions([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!sessions) return <Spinner label={t("chat.loadingShort")} />;
+
+  if (sessions.length === 0) {
+    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("chat.noHistory")}</div>;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {sessions.map((s) => {
+        const isActive = s.id === activeSessionId;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => {
+              if (!isActive) onSwitchSession?.(s.id);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md border p-2.5 text-left transition-colors hover:border-[var(--accent)]"
+            style={{
+              borderColor: isActive ? "var(--accent)" : "var(--rule)",
+              background: isActive ? "var(--accent-soft)" : undefined,
+            }}
+          >
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            >
+              <IconSessions width={16} height={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{s.id}</span>
+              <span className="label block text-[0.56rem]">{fmtSessionDate(s.updated_at)}</span>
+            </span>
+            {isActive && <span className="label shrink-0 text-[0.55rem]">{t("common.current")}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function fmtSessionDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function ResumeDetail({
