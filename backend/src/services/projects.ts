@@ -387,6 +387,31 @@ ${messages || '  （无）'}`;
  * understanding doc and resume content via the LLM. Persists the results and
  * flips status to 'done'; on any failure the project is marked 'error'.
  */
+/**
+ * Check whether a GitHub repo is publicly accessible (no auth). Returns
+ * { isPublic } on success, or null when the check fails / not a GitHub URL.
+ */
+export async function checkRepoVisibility(repoUrl: string | null): Promise<{ isPublic: boolean } | null> {
+  const m = repoUrl?.match(/^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
+  if (!m) return null;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${m[1]}/${m[2]}`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'job-agent-site',
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.status === 404) return { isPublic: false };
+    if (!res.ok) return null;
+    const data = (await res.json()) as { private?: boolean };
+    return { isPublic: !data.private };
+  } catch {
+    return null;
+  }
+}
+
 export async function runProjectAnalysis(projectId: string): Promise<AnalysisResult | { ok: false; error: string }> {
   try {
     const project = await get<ProjectRow>('SELECT * FROM projects WHERE id = ?', [projectId]);
@@ -423,8 +448,22 @@ export async function runProjectAnalysis(projectId: string): Promise<AnalysisRes
       return { ok: false, error: `LLM analysis failed: ${llmResult.error}` };
     }
 
-    // Parse the LLM response into doc and resume_content
+    // Parse the LLM response into doc and resume content
     const { doc, resumeContent } = parseAnalysisResult(llmResult.text!, project.name);
+
+    // Authoritative visibility check: only expose the source link for repos
+    // that are publicly accessible WITHOUT any credential. Private repos (or
+    // non-GitHub URLs / failed checks) never get a repo_link in resume output.
+    const visibility = await checkRepoVisibility(project.repo_url);
+    if (visibility) {
+      resumeContent.open_source = visibility.isPublic;
+      resumeContent.repo_link = visibility.isPublic
+        ? project.repo_url?.replace(/\.git$/, '').replace(/\/$/, '') ?? null
+        : null;
+    } else {
+      resumeContent.open_source = false;
+      resumeContent.repo_link = null;
+    }
 
     // Store results
     await run(
@@ -692,7 +731,7 @@ ${gitHistoryStr}
 
 注意：
 - 简历条目要突出技术亮点和业务价值，不要泛泛而谈${gitHistoryInstruction}
-- 如果能判断是否开源(有LICENSE文件)，设置open_source和repo_link
+- repo_link 和 open_source 无需你判断（系统会根据仓库实际可见性自动填写），保持 null/false 即可
 - content 3-5条，highlights 2-4条`;
 }
 

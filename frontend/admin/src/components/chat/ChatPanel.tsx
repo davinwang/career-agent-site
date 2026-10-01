@@ -287,10 +287,10 @@ export default function ChatPanel() {
             <ArtifactPanel
               refreshKey={refreshKey}
               onAsk={send}
-              onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }}
               sessionCount={sessions.length}
               activeSessionId={sessionId}
               onSwitchSession={(id) => switchSession(id)}
+              onNewSession={handleNew}
             />
           </div>
         )}

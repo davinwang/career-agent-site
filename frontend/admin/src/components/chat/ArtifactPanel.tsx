@@ -100,21 +100,21 @@ export function useArtifacts(refreshKey: number) {
 export default function ArtifactPanel({
   refreshKey,
   onAsk,
-  onOpenChange,
   sessionCount = 0,
   activeSessionId = null,
   onSwitchSession,
+  onNewSession,
 }: {
   refreshKey: number;
   onAsk: (text: string) => void;
-  /** Called when the user closes the detail view (used by the parent strip to collapse). */
-  onOpenChange?: (open: boolean) => void;
   /** Number of admin sessions (for the 会话 cell badge). */
   sessionCount?: number;
   /** Currently active session id (highlights the sessions detail list). */
   activeSessionId?: string | null;
   /** Switch the chat to another session. */
   onSwitchSession?: (id: string) => void;
+  /** Start a new admin chat (shown in the sessions detail list). */
+  onNewSession?: () => void;
 }) {
   const t = useT();
   // Combine parent refreshKey (assistant tool-call turns) with local bumps
@@ -171,10 +171,11 @@ export default function ArtifactPanel({
             kind={openKind}
             data={data}
             onAsk={onAsk}
-            onClose={() => { setOpenKind(null); onOpenChange?.(false); }}
+            onClose={() => setOpenKind(null)}
             onRefresh={bumpRefresh}
             activeSessionId={activeSessionId}
             onSwitchSession={onSwitchSession}
+            onNewSession={onNewSession}
           />
         </div>
       )}
@@ -194,6 +195,7 @@ function Detail({
   onRefresh,
   activeSessionId = null,
   onSwitchSession,
+  onNewSession,
 }: {
   kind: CellKind;
   data: Artifacts | null;
@@ -202,6 +204,7 @@ function Detail({
   onRefresh: () => void;
   activeSessionId?: string | null;
   onSwitchSession?: (id: string) => void;
+  onNewSession?: () => void;
 }) {
   const t = useT();
   const isGuest = useIsGuest();
@@ -269,7 +272,7 @@ function Detail({
           askText={t("artifacts.askSkills")}
         />
       ) : (
-        <SessionsDetail activeSessionId={activeSessionId} onSwitchSession={onSwitchSession} />
+        <SessionsDetail activeSessionId={activeSessionId} onSwitchSession={onSwitchSession} onNewSession={onNewSession} />
       )}
     </div>
   );
@@ -279,12 +282,15 @@ function Detail({
 function SessionsDetail({
   activeSessionId,
   onSwitchSession,
+  onNewSession,
 }: {
   activeSessionId?: string | null;
   onSwitchSession?: (id: string) => void;
+  onNewSession?: () => void;
 }) {
   const t = useT();
   const [sessions, setSessions] = useState<SessionItem[] | null>(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -301,43 +307,65 @@ function SessionsDetail({
     };
   }, []);
 
+  const handleNew = async () => {
+    setCreating(true);
+    try {
+      await onNewSession?.();
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (!sessions) return <Spinner label={t("chat.loadingShort")} />;
 
-  if (sessions.length === 0) {
-    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("chat.noHistory")}</div>;
-  }
-
   return (
-    <div className="space-y-1.5">
-      {sessions.map((s) => {
-        const isActive = s.id === activeSessionId;
-        return (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => {
-              if (!isActive) onSwitchSession?.(s.id);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-md border p-2.5 text-left transition-colors hover:border-[var(--accent)]"
-            style={{
-              borderColor: isActive ? "var(--accent)" : "var(--rule)",
-              background: isActive ? "var(--accent-soft)" : undefined,
-            }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-            >
-              <IconSessions width={16} height={16} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{s.id}</span>
-              <span className="label block text-[0.56rem]">{fmtSessionDate(s.updated_at)}</span>
-            </span>
-            {isActive && <span className="label shrink-0 text-[0.55rem]">{t("common.current")}</span>}
-          </button>
-        );
-      })}
+    <div>
+      {sessions.length === 0 ? (
+        <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("chat.noHistory")}</div>
+      ) : (
+        <div className="space-y-1.5">
+          {sessions.map((s) => {
+            const isActive = s.id === activeSessionId;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  if (!isActive) onSwitchSession?.(s.id);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md border p-2.5 text-left transition-colors hover:border-[var(--accent)]"
+                style={{
+                  borderColor: isActive ? "var(--accent)" : "var(--rule)",
+                  background: isActive ? "var(--accent-soft)" : undefined,
+                }}
+              >
+                <span
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+                >
+                  <IconSessions width={16} height={16} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{s.id}</span>
+                  <span className="label block text-[0.56rem]">{fmtSessionDate(s.updated_at)}</span>
+                </span>
+                {isActive && <span className="label shrink-0 text-[0.55rem]">{t("common.current")}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {onNewSession && (
+        <button
+          type="button"
+          onClick={handleNew}
+          disabled={creating}
+          className="label mt-2 w-full rounded-md border border-dashed py-2 text-[0.6rem] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
+          style={{ borderColor: "var(--rule)" }}
+        >
+          {creating ? t("chat.creating") : t("chat.newChat")}
+        </button>
+      )}
     </div>
   );
 }
