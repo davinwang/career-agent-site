@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { adminRequired, readAllowed, type AppEnv } from './auth.js';
 
 interface KnowledgeRow {
   id: string;
@@ -16,7 +16,7 @@ export const knowledgeRoutes = new Hono<AppEnv>();
  * GET /api/knowledge -> { knowledge: [...] } newest first. Admin only.
  * Omits the heavy content/chunks columns — the list view doesn't need them.
  */
-knowledgeRoutes.get('/', authRequired, async (c) => {
+knowledgeRoutes.get('/', readAllowed, async (c) => {
   const rows = await all<KnowledgeRow>(
     'SELECT id, filename, source_type, metadata, created_at FROM knowledge ORDER BY created_at DESC',
   );
@@ -26,7 +26,7 @@ knowledgeRoutes.get('/', authRequired, async (c) => {
 /**
  * DELETE /api/knowledge/:id -> remove a knowledge item. Admin only.
  */
-knowledgeRoutes.delete('/:id', authRequired, async (c) => {
+knowledgeRoutes.delete('/:id', adminRequired, async (c) => {
   const id = c.req.param('id');
   const existing = await get<{ id: string }>('SELECT id FROM knowledge WHERE id = ?', [id]);
   if (!existing) {

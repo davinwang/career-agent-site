@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { adminRequired, type AppEnv } from './auth.js';
 import {
   savePat, clearPat, clearGithub, getGithubStatus,
   verifyToken as verifyGithubToken, listRepos,
@@ -25,7 +25,7 @@ export const settingsRoutes = new Hono<AppEnv>();
  * Admin only. The admin portal's own look & feel — the recruiter portal no
  * longer follows it (visitors pick their own skin client-side).
  */
-settingsRoutes.get('/ui-theme', authRequired, async (c) => {
+settingsRoutes.get('/ui-theme', adminRequired, async (c) => {
   try {
     const row = await get<SettingRow>(
       "SELECT value FROM settings WHERE key = 'admin_skin'",
@@ -44,7 +44,7 @@ settingsRoutes.get('/ui-theme', authRequired, async (c) => {
  * PUT /api/settings/ui-theme { skin } -> { ok, skin }. Admin only.
  * Persists the admin portal's skin so it follows the account across devices.
  */
-settingsRoutes.put('/ui-theme', authRequired, async (c) => {
+settingsRoutes.put('/ui-theme', adminRequired, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = setSkinSchema.safeParse(raw);
   if (!parsed.success) {
@@ -65,7 +65,7 @@ const patSchema = z.object({ pat: z.string().min(20) });
 /**
  * GET /api/settings/github -> token hosting status (never the token itself).
  */
-settingsRoutes.get('/github', authRequired, async (c) => {
+settingsRoutes.get('/github', adminRequired, async (c) => {
   try {
     return c.json(await getGithubStatus());
   } catch {
@@ -77,7 +77,7 @@ settingsRoutes.get('/github', authRequired, async (c) => {
  * PUT /api/settings/github { pat } -> verify against GitHub /user, then store
  * encrypted. Admin only.
  */
-settingsRoutes.put('/github', authRequired, async (c) => {
+settingsRoutes.put('/github', adminRequired, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = patSchema.safeParse(raw);
   if (!parsed.success) {
@@ -100,7 +100,7 @@ settingsRoutes.put('/github', authRequired, async (c) => {
 /**
  * DELETE /api/settings/github -> remove hosted credentials (PAT + OAuth).
  */
-settingsRoutes.delete('/github', authRequired, async (c) => {
+settingsRoutes.delete('/github', adminRequired, async (c) => {
   await clearGithub();
   return c.json({ ok: true });
 });
@@ -108,7 +108,7 @@ settingsRoutes.delete('/github', authRequired, async (c) => {
 /**
  * GET /api/settings/github/repos -> repos reachable by the hosted token.
  */
-settingsRoutes.get('/github/repos', authRequired, async (c) => {
+settingsRoutes.get('/github/repos', adminRequired, async (c) => {
   const { getGithubToken } = await import('../services/github.js');
   const current = await getGithubToken();
   if (!current) {

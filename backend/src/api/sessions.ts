@@ -2,7 +2,7 @@ import { randomUUID as uuid } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { authRequired, adminRequired, readAllowed, type AppEnv } from './auth.js';
 
 interface SessionRow {
   id: string;
@@ -41,7 +41,7 @@ export const sessionRoutes = new Hono<AppEnv>();
 /**
  * GET /api/sessions?side=recruiter|admin -> list sessions. Admin only.
  */
-sessionRoutes.get('/', authRequired, async (c) => {
+sessionRoutes.get('/', readAllowed, async (c) => {
   const side = c.req.query('side');
   let rows: SessionRow[];
   // message_count lets the admin UI hide sessions that were opened but never
@@ -73,7 +73,7 @@ sessionRoutes.get('/', authRequired, async (c) => {
  * Server-side session identity: the admin chat follows the authenticated user
  * across browsers/devices instead of a per-browser localStorage id.
  */
-sessionRoutes.get('/current', authRequired, async (c) => {
+sessionRoutes.get('/current', adminRequired, async (c) => {
   const side = c.req.query('side') ?? 'admin';
   const parsed = sideSchema.safeParse(side);
   if (!parsed.success) {
@@ -110,7 +110,7 @@ sessionRoutes.get('/current', authRequired, async (c) => {
  * caller. The fresh session carries the owner marker, so it immediately
  * becomes the "current" session (latest updated_at wins) on every device.
  */
-sessionRoutes.post('/current', authRequired, async (c) => {
+sessionRoutes.post('/current', adminRequired, async (c) => {
   const side = c.req.query('side') ?? 'admin';
   const parsed = sideSchema.safeParse(side);
   if (!parsed.success || parsed.data !== 'admin') {

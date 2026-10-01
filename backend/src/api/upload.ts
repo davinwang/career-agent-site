@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { adminRequired, type AppEnv } from './auth.js';
 import { all, get, run } from '../db/client.js';
 import { IMAGE_EXTENSIONS, normalizeImage } from '../services/images.js';
 
@@ -46,7 +46,7 @@ interface UploadRow {
  * Accepted extensions: config.allowedUploadExtensions
  * Max size: config.maxUploadBytes (50 MB)
  */
-uploadRoutes.post('/', authRequired, async (c) => {
+uploadRoutes.post('/', adminRequired, async (c) => {
   const body = await c.req.parseBody();
   const file = body['file'];
 
@@ -108,7 +108,7 @@ uploadRoutes.post('/', authRequired, async (c) => {
 /**
  * GET /api/upload -> list uploaded originals, newest first. Admin only.
  */
-uploadRoutes.get('/', authRequired, async (c) => {
+uploadRoutes.get('/', adminRequired, async (c) => {
   const rows = await all<UploadRow>(
     'SELECT id, stored_name, original_name, ext, size, created_at FROM uploads ORDER BY created_at DESC',
   );
@@ -126,7 +126,7 @@ async function resolveStored(c: { req: { param: (k: string) => string } }) {
 /**
  * GET /api/upload/:storedName -> download the original file. Admin only.
  */
-uploadRoutes.get('/:storedName', authRequired, async (c) => {
+uploadRoutes.get('/:storedName', adminRequired, async (c) => {
   const { row } = await resolveStored(c);
   if (!row) return c.json({ error: 'upload not found' }, 404);
   const filePath = path.join(config.uploadDir, row.stored_name);
@@ -150,7 +150,7 @@ uploadRoutes.get('/:storedName', authRequired, async (c) => {
  * DELETE /api/upload/:storedName -> remove the original file + its record.
  * Note: knowledge extracted from the file stays in the knowledge base.
  */
-uploadRoutes.delete('/:storedName', authRequired, async (c) => {
+uploadRoutes.delete('/:storedName', adminRequired, async (c) => {
   const { row } = await resolveStored(c);
   if (!row) return c.json({ error: 'upload not found' }, 404);
   const filePath = path.join(config.uploadDir, row.stored_name);

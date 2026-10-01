@@ -10,7 +10,7 @@ import type { Context } from 'hono';
 import { config } from './config.js';
 import { initDb, closeDb, get, all } from './db/client.js';
 import { getMastra } from './mastra/index.js';
-import { authRoutes, authRequired, verifyToken, type AppEnv } from './api/auth.js';
+import { authRoutes, authRequired, adminRequired, readAllowed, verifyToken, isAdminToken, type AppEnv } from './api/auth.js';
 import { resumeRoutes } from './api/resume.js';
 import { sessionRoutes } from './api/sessions.js';
 import { uploadRoutes } from './api/upload.js';
@@ -59,7 +59,7 @@ app.route('/api/settings', settingsRoutes);
 // One aggregated view for the chat-page nine-grid: resume languages + photo,
 // knowledge files, projects, skills. All read-only; writes happen via the
 // admin agent's tools during conversation.
-app.get('/api/artifacts', authRequired, async (c) => {
+app.get('/api/artifacts', readAllowed, async (c) => {
   const [langs, know, proj, skills, uploads] = await Promise.all([
     all<{ lang: string }>('SELECT lang FROM resume'),
     all<{ id: string; filename: string; source_type: string; created_at: string; metadata: string | null; excerpt: string }>(
@@ -122,10 +122,9 @@ app.get('/uploads/:name', async (c) => {
   const ext = path.extname(safeName).toLowerCase();
   const mime = IMAGE_MIME[ext];
 
-  // Non-image uploads require admin auth.
+  // Non-image uploads require admin auth (guests cannot download originals).
   if (!mime) {
-    const username = verifyToken(c.req.header('Authorization'));
-    if (!username) {
+    if (!isAdminToken(c.req.header('Authorization'))) {
       return c.json({ error: 'unauthorized' }, 401);
     }
   }
@@ -248,14 +247,15 @@ app.post('/ag-ui/recruiter', (c) =>
 );
 
 /**
- * POST /ag-ui/admin — Admin AG-UI SSE endpoint (JWT).
- * Full tool access through the Mastra admin agent.
+ * POST /ag-ui/admin — Admin AG-UI SSE endpoint (JWT, admin role only).
+ * Guest tokens are rejected here: the admin agent has full write-tool access,
+ * which guests must never reach.
  */
 app.post('/ag-ui/admin', async (c) => {
-  const username = verifyToken(c.req.header('Authorization'));
-  if (!username) {
+  if (!isAdminToken(c.req.header('Authorization'))) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
+  const username = verifyToken(c.req.header('Authorization'))!;
   return handleAgUi(c, { kind: 'admin', resourceId: `admin-${username}` });
 });
 app.notFound((c) => c.json({ error: 'Not Found' }, 404));

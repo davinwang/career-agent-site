@@ -57,12 +57,12 @@ export function clearToken(): void {
 }
 
 /** Decode a JWT payload without verifying (expiry check only). */
-export function decodeToken(token: string): { exp?: number; username?: string } | null {
+export function decodeToken(token: string): { exp?: number; username?: string; role?: string } | null {
   try {
     const part = token.split(".")[1];
     if (!part) return null;
     const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(json) as { exp?: number; username?: string };
+    return JSON.parse(json) as { exp?: number; username?: string; role?: string };
   } catch {
     return null;
   }
@@ -147,12 +147,31 @@ const json = (o: Record<string, unknown>): string => JSON.stringify(o);
 
 /* ------------------------------- api ---------------------------------- */
 
-export const api = {
+const api = {
   // Auth
   login(username: string, password: string): Promise<{ token: string }> {
     return request("/api/auth/login", {
       method: "POST",
       body: json({ username, password }),
+    });
+  },
+  /** Whether the backend has guest mode enabled (public probe). */
+  guestStatus(): Promise<{ enabled: boolean }> {
+    return fetch(`${API_BASE}/api/auth/guest-status`).then((r) => r.json());
+  },
+  /** Obtain a read-only guest token (only works when guest mode is enabled). */
+  guestLogin(): Promise<{ token: string; username: string; guest: boolean }> {
+    return fetch(`${API_BASE}/api/auth/guest`, { method: "POST" }).then(async (r) => {
+      if (!r.ok) {
+        const detail = await r.json().catch(() => null);
+        throw new ApiError(
+          detail && typeof detail === "object" && "error" in detail
+            ? String((detail as { error: unknown }).error)
+            : `Guest login failed (${r.status})`,
+          r.status,
+        );
+      }
+      return r.json();
     });
   },
   me(): Promise<{ username: string }> {
@@ -346,4 +365,4 @@ export const api = {
   },
 };
 
-export { UNAUTHORIZED_EVENT };
+export { api, UNAUTHORIZED_EVENT };

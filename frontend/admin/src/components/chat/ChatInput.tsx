@@ -3,6 +3,7 @@ import type { KeyboardEvent, ChangeEvent, DragEvent } from "react";
 import { api } from "../../lib/api";
 import type { UploadOriginal } from "../../types/api";
 import { useT } from "../../lib/i18n";
+import { useIsGuest } from "../../hooks/useIsGuest";
 import { IconSend, IconPaperclip, IconSpinner, IconClose } from "../icons";
 
 interface Props {
@@ -22,6 +23,9 @@ export default function ChatInput({
   busy,
 }: Props) {
   const t = useT();
+  const isGuest = useIsGuest();
+  // Guests cannot chat: the whole input renders as a read-only notice.
+  const readOnly = disabled || isGuest;
   const [value, setValue] = useState("");
   const [attaching, setAttaching] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -43,7 +47,7 @@ export default function ChatInput({
 
   const submit = () => {
     const text = value.trim();
-    if (!text || disabled || busy) return;
+    if (!text || readOnly || busy) return;
     onSend(text);
     setValue("");
     if (areaRef.current) areaRef.current.style.height = "auto";
@@ -83,7 +87,7 @@ export default function ChatInput({
   };
 
   const onDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    if (!onAttach || disabled) return;
+    if (!onAttach || readOnly) return;
     e.preventDefault();
     dragDepth.current += 1;
     setDragging(true);
@@ -101,7 +105,7 @@ export default function ChatInput({
     e.preventDefault();
     dragDepth.current = 0;
     setDragging(false);
-    if (!onAttach || disabled || busy) return;
+    if (!onAttach || readOnly || busy) return;
     const files = Array.from(e.dataTransfer?.files ?? []);
     void uploadFiles(files);
   };
@@ -193,7 +197,7 @@ export default function ChatInput({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              disabled={attaching || disabled}
+              disabled={attaching || readOnly}
               aria-label={t("input.attach")}
               title={t("input.uploadFile")}
               className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] disabled:opacity-50"
@@ -206,7 +210,7 @@ export default function ChatInput({
         <button
           type="button"
           onClick={() => setPickerOpen((o) => !o)}
-          disabled={disabled || busy}
+          disabled={readOnly || busy}
           aria-label={t("input.reference")}
           title={t("input.reference")}
           className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--text-muted)] transition-colors hover:text-[var(--accent)] disabled:opacity-50"
@@ -221,8 +225,8 @@ export default function ChatInput({
           onChange={onInput}
           onKeyDown={onKeyDown}
           rows={1}
-          disabled={disabled}
-          placeholder={t("input.placeholder")}
+          disabled={readOnly}
+          placeholder={isGuest ? t("input.guestPlaceholder") : t("input.placeholder")}
           className="max-h-[180px] flex-1 resize-none bg-transparent px-1 py-2 text-[0.9rem] leading-relaxed outline-none placeholder:text-[var(--text-muted)] disabled:opacity-60"
           style={{ color: "var(--text)" }}
         />
@@ -230,7 +234,7 @@ export default function ChatInput({
         <button
           type="button"
           onClick={submit}
-          disabled={disabled || busy || !value.trim()}
+          disabled={readOnly || busy || !value.trim()}
           aria-label={t("input.send")}
           className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-md transition-all disabled:opacity-40"
           style={{ background: "var(--accent)", color: "var(--color-paper-50)" }}

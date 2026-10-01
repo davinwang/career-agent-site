@@ -5,6 +5,7 @@ import type { UploadOriginal } from "../../types/api";
 import ResumePreview from "../ResumePreview";
 import { Badge, Spinner } from "../ui";
 import { useT } from "../../lib/i18n";
+import { useIsGuest } from "../../hooks/useIsGuest";
 import {
   IconResume,
   IconUpload,
@@ -345,6 +346,7 @@ function ResumeDetail({
   onChanged: () => void;
 }) {
   const t = useT();
+  const isGuest = useIsGuest();
   const [preview, setPreview] = useState<{ lang: string; data: ResumeData } | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -427,15 +429,17 @@ function ResumeDetail({
           >
             {t("common.preview")}
           </button>
-          <button
-            type="button"
-            onClick={() => download(r.lang)}
-            disabled={downloading === r.lang}
-            aria-label={`${t("common.download")} PDF`}
-            className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
-          >
-            {downloading === r.lang ? <IconSpinner width={14} height={14} /> : <IconDownload width={15} height={15} />}
-          </button>
+          {!isGuest && (
+            <button
+              type="button"
+              onClick={() => download(r.lang)}
+              disabled={downloading === r.lang}
+              aria-label={`${t("common.download")} PDF`}
+              className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+            >
+              {downloading === r.lang ? <IconSpinner width={14} height={14} /> : <IconDownload width={15} height={15} />}
+            </button>
+          )}
         </div>
       ))}
       <button
@@ -461,6 +465,7 @@ function UploadsSection({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const t = useT();
+  const isGuest = useIsGuest();
   if (uploads.length === 0) return null;
 
   const remove = async (u: UploadOriginal) => {
@@ -492,23 +497,27 @@ function UploadsSection({
                 {(u.size / 1024).toFixed(0)} KB · {new Date(u.created_at).toLocaleDateString()}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
-              aria-label={t("artifacts.downloadOriginal", u.original_name)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
-            >
-              <IconDownload width={13} height={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => remove(u)}
-              disabled={busy === u.stored_name}
-              aria-label={t("artifacts.deleteOriginal", u.original_name)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
-            >
-              {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
-            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
+                aria-label={t("artifacts.downloadOriginal", u.original_name)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+              >
+                <IconDownload width={13} height={13} />
+              </button>
+            )}
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => remove(u)}
+                disabled={busy === u.stored_name}
+                aria-label={t("artifacts.deleteOriginal", u.original_name)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+              >
+                {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -531,6 +540,7 @@ function KnowledgeDetail({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const t = useT();
+  const isGuest = useIsGuest();
 
   if (knowledge.length === 0 && uploads.length === 0) {
     return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("artifacts.emptyKnowledge")}</div>;
@@ -570,7 +580,7 @@ function KnowledgeDetail({
                 {k.source_type} · {new Date(k.created_at).toLocaleDateString()}
               </div>
             </div>
-            {stored && (
+            {stored && !isGuest && (
               <button
                 type="button"
                 onClick={() => api.downloadUpload(stored.stored_name, stored.original_name)}
@@ -580,15 +590,17 @@ function KnowledgeDetail({
                 <IconDownload width={13} height={13} />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => removeEntry(k.id, k.filename)}
-              disabled={busy === k.id}
-              aria-label={t("artifacts.deleteOriginal", k.filename)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
-            >
-              {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
-            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => removeEntry(k.id, k.filename)}
+                disabled={busy === k.id}
+                aria-label={t("artifacts.deleteOriginal", k.filename)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+              >
+                {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+              </button>
+            )}
           </div>
         );
       })}

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../stores/auth";
+import { api } from "../lib/api";
 import { useT } from "../lib/i18n";
 import { IconSpinner } from "../components/icons";
 import ThemeToggle from "../components/ThemeToggle";
@@ -9,15 +10,48 @@ import LangSwitch from "../components/LangSwitch";
 
 export default function Login() {
   const login = useAuth((s) => s.login);
+  const guestLogin = useAuth((s) => s.guestLogin);
   const t = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestEnabled, setGuestEnabled] = useState(false);
+
+  // Probe whether the backend allows guest access — the button only renders
+  // when guest mode is on server-side.
+  useEffect(() => {
+    let active = true;
+    api
+      .guestStatus()
+      .then((r) => {
+        if (active) setGuestEnabled(!!r.enabled);
+      })
+      .catch(() => {
+        /* probe failed — keep the button hidden */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const from = (location.state as { from?: string } | null)?.from ?? "/chat";
+
+  const onGuest = async () => {
+    if (guestLoading) return;
+    setError(null);
+    setGuestLoading(true);
+    const ok = await guestLogin();
+    setGuestLoading(false);
+    if (ok) {
+      navigate(from, { replace: true });
+    } else {
+      setError(t("login.errGuest"));
+    }
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -125,6 +159,32 @@ export default function Login() {
               t("login.submit")
             )}
           </button>
+
+          {guestEnabled && (
+            <>
+              <div className="flex items-center gap-3" aria-hidden>
+                <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
+                <span className="label text-[0.56rem]">{t("login.or")}</span>
+                <span className="h-px flex-1" style={{ background: "var(--rule)" }} />
+              </div>
+              <button
+                type="button"
+                onClick={onGuest}
+                disabled={guestLoading}
+                className="w-full rounded-md border py-2.5 text-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
+                style={{ borderColor: "var(--rule)" }}
+              >
+                {guestLoading ? (
+                  <>
+                    <IconSpinner width={16} height={16} /> {t("login.guestEntering")}
+                  </>
+                ) : (
+                  t("login.guest")
+                )}
+              </button>
+              <p className="text-center text-[0.62rem] text-[var(--text-muted)]">{t("login.guestHint")}</p>
+            </>
+          )}
         </form>
 
         <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
