@@ -101,6 +101,8 @@ const zh = {
     noMessages: "该会话暂无消息",
     loadFailed: "加载会话失败",
     loadMsgsFailed: "加载消息失败",
+    showEmpty: (n: number) => `显示 ${n} 个空会话`,
+    hideEmpty: "隐藏空会话",
     you: "猎",
   },
   github: {
@@ -340,6 +342,8 @@ const en: Dict = {
     noMessages: "No messages in this session",
     loadFailed: "Failed to load sessions",
     loadMsgsFailed: "Failed to load messages",
+    showEmpty: (n: number) => `Show ${n} empty session(s)`,
+    hideEmpty: "Hide empty sessions",
     you: "R",
   },
   github: {

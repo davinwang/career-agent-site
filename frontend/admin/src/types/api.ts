@@ -8,6 +8,8 @@ export interface Session {
   created_at: string;
   updated_at: string;
   metadata?: Record<string, unknown> | string | null;
+  /** Number of messages in the session — 0 means the recruiter never said anything. */
+  message_count?: number;
 }
 
 export type MessageRole = "user" | "assistant" | "system" | "tool";

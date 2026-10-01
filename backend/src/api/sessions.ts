@@ -10,6 +10,7 @@ interface SessionRow {
   created_at: string;
   updated_at: string;
   metadata: string | null;
+  message_count: number;
 }
 
 interface MessageRow {
@@ -43,18 +44,24 @@ export const sessionRoutes = new Hono<AppEnv>();
 sessionRoutes.get('/', authRequired, async (c) => {
   const side = c.req.query('side');
   let rows: SessionRow[];
+  // message_count lets the admin UI hide sessions that were opened but never
+  // received any message (recruiters who just glanced at the portal).
   if (side) {
     const parsed = sideSchema.safeParse(side);
     if (!parsed.success) {
       return c.json({ error: 'side must be "recruiter" or "admin"' }, 400);
     }
     rows = await all<SessionRow>(
-      'SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE side = ? ORDER BY updated_at DESC',
+      `SELECT s.id, s.side, s.created_at, s.updated_at, s.metadata,
+              (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+       FROM sessions s WHERE s.side = ? ORDER BY s.updated_at DESC`,
       [parsed.data],
     );
   } else {
     rows = await all<SessionRow>(
-      'SELECT id, side, created_at, updated_at, metadata FROM sessions ORDER BY updated_at DESC',
+      `SELECT s.id, s.side, s.created_at, s.updated_at, s.metadata,
+              (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+       FROM sessions s ORDER BY s.updated_at DESC`,
     );
   }
   return c.json({ sessions: rows });
