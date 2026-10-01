@@ -28,7 +28,7 @@ const zh = {
     del: "删除",
   },
   login: {
-    title: "简历 Agent",
+    title: "求职导师 Agent",
     subtitle: "Admin Console · 管理端登录",
     username: "用户名",
     password: "密码",
@@ -238,6 +238,17 @@ const zh = {
   a11y: {
     uiLanguage: "切换界面语言",
   },
+  appearance: {
+    title: "外观设置",
+    theme: "主题",
+    style: "样式",
+    light: "浅色",
+    system: "跟随系统",
+    dark: "深色",
+    skinClassic: "经典报纸",
+    skinModern: "现代简约",
+    skinEmerald: "墨绿典雅",
+  },
 };
 
 export type Dict = typeof zh;
@@ -256,7 +267,7 @@ const en: Dict = {
     del: "Delete",
   },
   login: {
-    title: "Resume Agent",
+    title: "Career Mentor Agent",
     subtitle: "Admin Console · Sign in",
     username: "Username",
     password: "Password",
@@ -465,6 +476,17 @@ const en: Dict = {
   },
   a11y: {
     uiLanguage: "Switch UI language",
+  },
+  appearance: {
+    title: "Appearance",
+    theme: "Theme",
+    style: "Style",
+    light: "Light",
+    system: "System",
+    dark: "Dark",
+    skinClassic: "Classic",
+    skinModern: "Modern",
+    skinEmerald: "Emerald",
   },
 };
 

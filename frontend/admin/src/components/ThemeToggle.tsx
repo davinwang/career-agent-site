@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useUi } from "../stores/ui";
 import { useAdminSkin, SKIN_IDS, type SkinId } from "../hooks/useAdminSkin";
+import { useT } from "../lib/i18n";
 import { IconSun, IconMoon, IconMonitor } from "./icons";
 
-const SKIN_META: Record<SkinId, { label: string; swatch: [string, string] }> = {
-  classic: { label: "经典报纸", swatch: ["#e9e2d3", "#b4441c"] },
-  modern: { label: "现代简约", swatch: ["#f4f5f8", "#4f46e5"] },
-  emerald: { label: "墨绿典雅", swatch: ["#eceee6", "#1d6b4f"] },
+/** Skin ids in i18n: appearance.skinClassic / skinModern / skinEmerald. */
+const SKIN_KEY: Record<SkinId, string> = {
+  classic: "appearance.skinClassic",
+  modern: "appearance.skinModern",
+  emerald: "appearance.skinEmerald",
+};
+
+const SKIN_SWATCH: Record<SkinId, [string, string]> = {
+  classic: ["#e9e2d3", "#b4441c"],
+  modern: ["#f4f5f8", "#4f46e5"],
+  emerald: ["#eceee6", "#1d6b4f"],
 };
 
 /**
@@ -15,6 +23,7 @@ const SKIN_META: Record<SkinId, { label: string; swatch: [string, string] }> = {
  * (The recruiter portal's look is chosen by its visitors client-side.)
  */
 export default function ThemeToggle() {
+  const t = useT();
   const theme = useUi((s) => s.theme);
   const themeChoice = useUi((s) => s.themeChoice);
   const setThemeChoice = useUi((s) => s.setThemeChoice);
@@ -52,10 +61,10 @@ export default function ThemeToggle() {
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="外观设置"
+        aria-label={t("appearance.title")}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title="主题与样式"
+        title={t("appearance.title")}
         className="focus-ring relative grid h-9 w-9 place-items-center rounded-full border transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
         style={{ borderColor: "var(--rule)", color: "var(--text-muted)" }}
       >
@@ -78,7 +87,7 @@ export default function ThemeToggle() {
         <div
           ref={popRef}
           role="dialog"
-          aria-label="外观设置"
+          aria-label={t("appearance.title")}
           className="absolute right-0 top-[calc(100%+8px)] z-[70] w-60 rounded-lg border p-3"
           style={{
             borderColor: "var(--rule)",
@@ -88,13 +97,13 @@ export default function ThemeToggle() {
         >
           {/* Theme: light / system / dark */}
           <div className="mb-1.5 text-[0.6rem] font-medium uppercase tracking-widest text-[var(--text-muted)]">
-            主题
+            {t("appearance.theme")}
           </div>
-          <div className="mb-3 grid grid-cols-3 gap-1" role="radiogroup" aria-label="主题">
+          <div className="mb-3 grid grid-cols-3 gap-1" role="radiogroup" aria-label={t("appearance.theme")}>
             {([
-              { choice: "light", label: "浅色", Icon: IconSun },
-              { choice: "system", label: "跟随系统", Icon: IconMonitor },
-              { choice: "dark", label: "深色", Icon: IconMoon },
+              { choice: "light", label: t("appearance.light"), Icon: IconSun },
+              { choice: "system", label: t("appearance.system"), Icon: IconMonitor },
+              { choice: "dark", label: t("appearance.dark"), Icon: IconMoon },
             ] as const).map(({ choice, label, Icon }) => {
               const active = themeChoice === choice;
               return (
@@ -122,11 +131,11 @@ export default function ThemeToggle() {
 
           {/* Skin: three visual styles */}
           <div className="mb-1.5 text-[0.6rem] font-medium uppercase tracking-widest text-[var(--text-muted)]">
-            样式
+            {t("appearance.style")}
           </div>
-          <div className="flex flex-col gap-1" role="radiogroup" aria-label="样式">
+          <div className="flex flex-col gap-1" role="radiogroup" aria-label={t("appearance.style")}>
             {SKIN_IDS.map((id) => {
-              const meta = SKIN_META[id];
+              const swatch = SKIN_SWATCH[id];
               const active = skin === id;
               return (
                 <button
@@ -145,7 +154,7 @@ export default function ThemeToggle() {
                     className="flex flex-none overflow-hidden rounded-sm border"
                     style={{ borderColor: "var(--rule)" }}
                   >
-                    {meta.swatch.map((c) => (
+                    {swatch.map((c) => (
                       <span key={c} style={{ width: 10, height: 18, background: c }} />
                     ))}
                   </span>
@@ -153,7 +162,7 @@ export default function ThemeToggle() {
                     className="min-w-0 flex-1 truncate"
                     style={active ? { color: "var(--accent)" } : undefined}
                   >
-                    {meta.label}
+                    {t(SKIN_KEY[id])}
                   </span>
                   {active && <span className="flex-none text-[0.6rem] text-[var(--accent)]">✓</span>}
                 </button>
