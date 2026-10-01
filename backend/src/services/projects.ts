@@ -170,6 +170,218 @@ export interface AnalysisResult {
   resume_content: unknown;
 }
 
+// --- Git history (contribution & timeline evidence) ---
+
+export interface AuthorContribution {
+  name: string;
+  email: string | null;
+  commits: number;
+  firstCommitAt: string;
+  lastCommitAt: string;
+}
+
+export interface GitHistory {
+  source: 'github-api' | 'git-log';
+  /** null = unknown / sampled (repo has more commits than we fetched) */
+  totalCommits: number | null;
+  firstCommitAt: string | null;
+  lastCommitAt: string | null;
+  authors: AuthorContribution[];
+  commitMessages: string[];
+  note?: string;
+}
+
+const GITHUB_COMMITS_PAGES = 3; // 3 × 100 = 300 sampled commits max
+const MAX_COMMIT_MESSAGES = 20;
+const MAX_AUTHORS_IN_PROMPT = 10;
+
+/**
+ * Collect commit history for a project to infer contribution and timeline.
+ * GitHub repos: official commits API (works even though we store a tarball
+ * without .git). Non-GitHub: `git log` on the cloned source when available.
+ * Best-effort — any failure returns null and analysis proceeds without it.
+ */
+export async function collectGitHistory(project: {
+  name: string;
+  repo_url: string | null;
+}): Promise<GitHistory | null> {
+  try {
+    const ghMatch = project.repo_url?.match(
+      /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/,
+    );
+    if (ghMatch) {
+      return await githubApiHistory(`${ghMatch[1]}/${ghMatch[2]}`);
+    }
+
+    const srcDir = path.join(config.repoDir, project.name, 'src');
+    return await gitLogHistory(srcDir);
+  } catch (err: any) {
+    console.warn(`[projects] git history collection failed for ${project.name}:`, err?.message);
+    return null;
+  }
+}
+
+async function githubApiHistory(ownerRepo: string): Promise<GitHistory | null> {
+  const cred = await getGithubToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'job-agent-site',
+  };
+  if (cred) headers.Authorization = `Bearer ${cred.token}`;
+
+  const commits: Array<{
+    commit: { author?: { name?: string; email?: string; date?: string }; message?: string };
+    author?: { login?: string } | null;
+    sha: string;
+  }> = [];
+  let lastPage: number | null = null;
+
+  for (let page = 1; page <= GITHUB_COMMITS_PAGES; page++) {
+    const res = await fetch(
+      `https://api.github.com/repos/${ownerRepo}/commits?per_page=100&page=${page}`,
+      { headers, signal: AbortSignal.timeout(30_000) },
+    );
+    if (!res.ok) {
+      if (commits.length > 0) break; // partial data is still useful
+      return null;
+    }
+    const batch = (await res.json()) as typeof commits;
+    commits.push(...batch);
+
+    // Parse Link header once for the total page count.
+    if (lastPage === null) {
+      const link = res.headers.get('link') ?? '';
+      const m = link.match(/[?&]page=(\d+)>;\s*rel="last"/);
+      lastPage = m ? Number(m[1]) : 1;
+    }
+    if (batch.length < 100 || page >= lastPage) break;
+  }
+
+  if (commits.length === 0) return null;
+
+  const sampled = GITHUB_COMMITS_PAGES * 100;
+  const complete = lastPage !== null && lastPage <= GITHUB_COMMITS_PAGES;
+
+  const byAuthor = new Map<string, AuthorContribution>();
+  const dates: string[] = [];
+  const messages: string[] = [];
+
+  for (const c of commits) {
+    const date = c.commit.author?.date ?? '';
+    if (date) dates.push(date);
+    if (c.commit.message) {
+      messages.push(c.commit.message.split('\n')[0].slice(0, 120));
+    }
+    const name = c.author?.login || c.commit.author?.name || 'unknown';
+    const email = c.commit.author?.email ?? null;
+    const key = c.author?.login || email || name;
+    const existing = byAuthor.get(key);
+    if (existing) {
+      existing.commits++;
+      if (date && date < existing.firstCommitAt) existing.firstCommitAt = date;
+      if (date && date > existing.lastCommitAt) existing.lastCommitAt = date;
+    } else {
+      byAuthor.set(key, {
+        name,
+        email,
+        commits: 1,
+        firstCommitAt: date,
+        lastCommitAt: date,
+      });
+    }
+  }
+
+  const sortedDates = dates.sort();
+  return {
+    source: 'github-api',
+    totalCommits: complete ? commits.length : null,
+    firstCommitAt: sortedDates[0] ?? null,
+    lastCommitAt: sortedDates[sortedDates.length - 1] ?? null,
+    authors: [...byAuthor.values()].sort((a, b) => b.commits - a.commits),
+    commitMessages: messages.slice(0, MAX_COMMIT_MESSAGES),
+    note: complete
+      ? undefined
+      : `仓库提交较多，仅采样最近 ${Math.min(commits.length, sampled)} 条（共约 ${lastPage ?? '?'} 页）`,
+  };
+}
+
+async function gitLogHistory(srcDir: string): Promise<GitHistory | null> {
+  try {
+    await fs.access(path.join(srcDir, '.git'));
+  } catch {
+    return null; // tarball-only checkout, no git metadata
+  }
+
+  try {
+    const { simpleGit } = await import('simple-git');
+    const git = simpleGit(srcDir);
+    const raw = await git.raw([
+      'log',
+      '--pretty=format:%an%x1f%ae%x1f%aI%x1f%s',
+      '-n',
+      '1000',
+    ]);
+    if (!raw.trim()) return null;
+
+    let shallow = false;
+    try {
+      await fs.access(path.join(srcDir, '.git', 'shallow'));
+      shallow = true;
+    } catch { /* full history */ }
+
+    const byAuthor = new Map<string, AuthorContribution>();
+    const dates: string[] = [];
+    const messages: string[] = [];
+
+    for (const line of raw.split('\n')) {
+      const [name, email, date, subject] = line.split('\x1f');
+      if (!name || !date) continue;
+      dates.push(date);
+      if (subject) messages.push(subject.slice(0, 120));
+      const key = email || name;
+      const existing = byAuthor.get(key);
+      if (existing) {
+        existing.commits++;
+        if (date < existing.firstCommitAt) existing.firstCommitAt = date;
+        if (date > existing.lastCommitAt) existing.lastCommitAt = date;
+      } else {
+        byAuthor.set(key, { name, email: email || null, commits: 1, firstCommitAt: date, lastCommitAt: date });
+      }
+    }
+
+    const sortedDates = dates.sort();
+    return {
+      source: 'git-log',
+      totalCommits: shallow ? null : dates.length >= 1000 ? null : dates.length,
+      firstCommitAt: sortedDates[0] ?? null,
+      lastCommitAt: sortedDates[sortedDates.length - 1] ?? null,
+      authors: [...byAuthor.values()].sort((a, b) => b.commits - a.commits),
+      commitMessages: messages.slice(0, MAX_COMMIT_MESSAGES),
+      note: shallow ? '本地克隆为浅克隆（shallow），历史不完整' : undefined,
+    };
+  } catch (err: any) {
+    console.warn('[projects] git log failed:', err?.message);
+    return null;
+  }
+}
+
+function formatGitHistoryForPrompt(h: GitHistory): string {
+  const authors = h.authors
+    .slice(0, MAX_AUTHORS_IN_PROMPT)
+    .map((a) => `  - ${a.name}${a.email ? ` <${a.email}>` : ''}: ${a.commits} commits (${a.firstCommitAt.slice(0, 10)} ~ ${a.lastCommitAt.slice(0, 10)})`)
+    .join('\n');
+  const messages = h.commitMessages.map((m) => `  - ${m}`).join('\n');
+  const total = h.totalCommits !== null ? `${h.totalCommits}` : '未知（采样统计）';
+  return `来源: ${h.source === 'github-api' ? 'GitHub Commits API' : 'git log'}${h.note ? `（${h.note}）` : ''}
+总提交数: ${total}
+时间跨度: ${h.firstCommitAt?.slice(0, 10) ?? '未知'} ~ ${h.lastCommitAt?.slice(0, 10) ?? '未知'}
+作者贡献（按提交数降序）:
+${authors || '  （无作者信息）'}
+最近提交消息:
+${messages || '  （无）'}`;
+}
+
 /**
  * Analyze a cloned project: compute stats, read key files, then generate the
  * understanding doc and resume content via the LLM. Persists the results and
@@ -197,8 +409,11 @@ export async function runProjectAnalysis(projectId: string): Promise<AnalysisRes
     const dirTree = await buildDirectoryTree(srcDir, 3);
     const keyFiles = await readKeyFiles(srcDir);
 
+    // Collect git history for contribution/timeline evidence (best-effort).
+    const gitHistory = await collectGitHistory(project);
+
     // Build the LLM prompt for analysis
-    const analysisPrompt = buildAnalysisPrompt(project.name, fileStats, dirTree, keyFiles);
+    const analysisPrompt = buildAnalysisPrompt(project.name, fileStats, dirTree, keyFiles, gitHistory);
 
     // Call LLM for analysis
     const llmResult = await callLlm(analysisPrompt);
@@ -407,6 +622,7 @@ function buildAnalysisPrompt(
   fileStats: FileStats,
   dirTree: string,
   keyFiles: Array<{ name: string; content: string }>,
+  gitHistory: GitHistory | null,
 ): string {
   const statsStr = Object.entries(fileStats.byExtension)
     .sort((a, b) => b[1].lines - a[1].lines)
@@ -417,6 +633,16 @@ function buildAnalysisPrompt(
   const filesStr = keyFiles
     .map((f) => `### ${f.name}\n\`\`\`\n${f.content}\n\`\`\``)
     .join('\n\n');
+
+  const gitHistoryStr = gitHistory
+    ? `\n## Git 提交历史（贡献与时间线证据）\n${formatGitHistoryForPrompt(gitHistory)}\n`
+    : '';
+
+  const gitHistoryInstruction = gitHistory
+    ? `\n- 利用上面的 Git 提交历史：根据作者贡献判断候选人（${gitHistory.authors.length > 0 ? `提交最活跃的作者是 ${gitHistory.authors[0].name}` : '主要作者'}）在项目中的真实角色和贡献占比；根据时间跨度填写 period（格式如 2024.03 - 2025.01）；提交消息可帮助理解开发重点和演进阶段
+- 若有多位作者，如实说明候选人的贡献占比，不要把整个项目都归到候选人名下；若候选人就是唯一/主要作者，可强调独立完成度`
+    : `
+- 无法获取 Git 历史：period 如无法推断则留空或写"时间不详"，不要编造时间线`;
 
   return `你是一个资深软件架构师。分析以下项目 "${projectName}" 的结构和关键文件，生成项目理解文档和简历条目。
 
@@ -433,7 +659,7 @@ ${dirTree}
 
 ## 关键文件
 ${filesStr}
-
+${gitHistoryStr}
 ---
 
 请输出两个部分，用 "===SEPARATOR===" 分隔：
@@ -448,7 +674,9 @@ ${filesStr}
 ## 关键文件摘录
 （重要的配置、入口文件的说明）
 ## 架构与亮点
-（技术架构、设计模式、创新点、技术难点）
+（技术架构、设计模式、创新点、技术难点）${gitHistory ? `
+## 贡献与时间线
+（基于 Git 历史推断：项目起止时间、开发节奏、候选人贡献占比与角色、主要开发阶段）` : ''}
 
 **第二部分：简历条目（JSON格式）**
 格式要求:
@@ -463,7 +691,7 @@ ${filesStr}
 }
 
 注意：
-- 简历条目要突出技术亮点和业务价值，不要泛泛而谈
+- 简历条目要突出技术亮点和业务价值，不要泛泛而谈${gitHistoryInstruction}
 - 如果能判断是否开源(有LICENSE文件)，设置open_source和repo_link
 - content 3-5条，highlights 2-4条`;
 }
@@ -480,7 +708,12 @@ async function callLlm(prompt: string): Promise<LlmResult> {
       return { error: 'LLM_API_KEY not configured' };
     }
 
-    const response = await fetch(`${llm.baseUrl}/v1/chat/completions`, {
+    // OpenAI-compatible providers differ in whether the base URL already
+    // carries the API version (zhipu .../v4, deepseek bare domain).
+    const chatUrl = /\/v\d+$/.test(llm.baseUrl)
+      ? `${llm.baseUrl}/chat/completions`
+      : `${llm.baseUrl}/v1/chat/completions`;
+    const response = await fetch(chatUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
