@@ -134,7 +134,7 @@ export default function ArtifactPanel({
       </div>
 
       {/* Grid: five cells in a single row on PC; wraps to a grid on narrow widths */}
-      <div className="grid grid-cols-5 gap-2 max-lg:grid-cols-3 max-sm:grid-cols-2">
+      <div className="grid grid-cols-5 gap-1.5 max-sm:grid-cols-3">
         {GRID_CELLS.map((cell) => {
           const Icon = iconFor(cell.kind);
           const count = countFor(data, cell.kind, sessionCount);
@@ -144,7 +144,7 @@ export default function ArtifactPanel({
               key={cell.kind}
               type="button"
               onClick={() => setOpenKind(cell.kind)}
-              className="rise group flex flex-col items-center justify-center gap-1.5 rounded-lg border p-3 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]"
+              className="rise group flex flex-col items-center justify-center gap-1 rounded-lg border p-2 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]"
               style={{
                 borderColor: openKind === cell.kind ? "var(--accent)" : "var(--rule)",
                 background: empty ? "color-mix(in srgb, var(--surface) 60%, transparent)" : "var(--surface)",
@@ -155,9 +155,9 @@ export default function ArtifactPanel({
                 className="transition-colors group-hover:text-[var(--accent)]"
                 style={{ color: empty ? "var(--text-muted)" : "var(--accent)" }}
               >
-                <Icon width={20} height={20} />
+                <Icon width={17} height={17} />
               </span>
-              <span className="text-xs font-medium">{t(cell.labelKey)}</span>
+              <span className="truncate text-[0.7rem] leading-tight font-medium">{t(cell.labelKey)}</span>
               <span className="label text-[0.56rem]">{empty ? t("chat.pendingGen") : `${count}`}</span>
             </button>
           );
