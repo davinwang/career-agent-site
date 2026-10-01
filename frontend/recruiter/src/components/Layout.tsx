@@ -3,7 +3,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { UiStrings } from '../lib/i18n';
 import { cx } from '../lib/utils';
 import { API_BASE } from '../lib/api';
-import { ChatIcon } from './Icons';
+import { ChatIcon, DownloadIcon } from './Icons';
 import LanguageSwitch from './LanguageSwitch';
 import ThemeToggle from './ThemeToggle';
 
@@ -59,14 +59,15 @@ function DownloadMenu({ languages, t }: { languages: string[]; t: UiStrings }) {
     <div ref={wrapRef} className="relative">
       <button
         type="button"
-        className="seg__btn rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
+        className="seg__btn flex items-center gap-1 rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.masthead.downloadPdf}
         title={t.masthead.downloadPdf}
         onClick={() => setOpen((v) => !v)}
       >
-        {t.masthead.download}
+        <DownloadIcon className="h-3.5 w-3.5" />
+        <span aria-hidden>PDF</span>
       </button>
       <div
         role="menu"

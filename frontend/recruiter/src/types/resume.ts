@@ -103,3 +103,9 @@ export const LANG_LABELS: Record<string, string> = {
   zh: '中文',
   en: 'English',
 };
+
+/** Compact labels for narrow viewports (mobile header). */
+export const LANG_LABELS_SHORT: Record<string, string> = {
+  zh: '中',
+  en: 'EN',
+};

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { UiStrings } from '../lib/i18n';
-import { LANG_LABELS } from '../types/resume';
+import { LANG_LABELS, LANG_LABELS_SHORT } from '../types/resume';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 interface Props {
   languages: string[];
@@ -9,8 +10,13 @@ interface Props {
   t: UiStrings;
 }
 
-function labelFor(lang: string): string {
-  return LANG_LABELS[lang] ?? lang.toUpperCase();
+/**
+ * Full label on desktop, compact single-glyph labels on mobile to save
+ * header space (中文→中, English→EN).
+ */
+function labelFor(lang: string, compact: boolean): string {
+  const dict = compact ? LANG_LABELS_SHORT : LANG_LABELS;
+  return dict[lang] ?? lang.toUpperCase();
 }
 
 /**
@@ -18,6 +24,7 @@ function labelFor(lang: string): string {
  * the real button boxes so it stays correct for any language list.
  */
 export function LanguageSwitch({ languages, value, onChange, t }: Props) {
+  const isCompact = !useMediaQuery('(min-width: 640px)');
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [thumb, setThumb] = useState({ left: 2, width: 0 });
@@ -33,7 +40,7 @@ export function LanguageSwitch({ languages, value, onChange, t }: Props) {
     setThumb({ left: box.left - wrapBox.left, width: box.width });
   };
 
-  useLayoutEffect(measure, [items.join('|'), value]);
+  useLayoutEffect(measure, [items.join('|'), value, isCompact]);
 
   useEffect(() => {
     if (typeof document.fonts?.ready?.then === 'function') {
@@ -67,7 +74,7 @@ export function LanguageSwitch({ languages, value, onChange, t }: Props) {
           aria-pressed={value === lang}
           onClick={() => onChange(lang)}
         >
-          {labelFor(lang)}
+          {labelFor(lang, isCompact)}
         </button>
       ))}
     </div>

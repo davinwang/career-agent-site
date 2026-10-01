@@ -19,7 +19,7 @@ function detectInitialUiLang(): UiLang {
   } catch {
     /* ignore */
   }
-  const nav = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : 'zh';
+  const nav = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : 'en';
   return nav.startsWith('zh') ? 'zh' : 'en';
 }
 
