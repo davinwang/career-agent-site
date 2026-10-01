@@ -45,8 +45,8 @@ export const config = {
   adminUsername: process.env.ADMIN_USERNAME ?? 'admin',
   adminPassword: process.env.ADMIN_PASSWORD ?? 'admin123',
   // Guest mode: allows read-only anonymous access to the admin portal via a
-  // restricted guest token. Off by default; enable with GUEST_MODE=true.
-  guestMode: process.env.GUEST_MODE === 'true',
+  // restricted guest token. Off by default; enable with ALLOW_GUEST_MODE=true.
+  guestMode: process.env.ALLOW_GUEST_MODE === 'true',
   // Guest tokens live shorter than admin ones.
   guestExpiresIn: process.env.GUEST_EXPIRES_IN ?? '12h',
 
