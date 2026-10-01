@@ -5,11 +5,13 @@ import type { UploadOriginal } from "../../types/api";
 import ResumePreview from "../ResumePreview";
 import { Badge, Spinner } from "../ui";
 import { useT } from "../../lib/i18n";
+import { useIsGuest } from "../../hooks/useIsGuest";
 import {
   IconResume,
   IconUpload,
   IconProjects,
   IconSkills,
+  IconSessions,
   IconClose,
   IconDownload,
   IconSpinner,
@@ -24,16 +26,24 @@ interface Artifacts {
   uploads?: UploadOriginal[];
 }
 
+interface SessionItem {
+  id: string;
+  updated_at: string;
+  created_at: string;
+}
+
 const GRID_CELLS = [
   { kind: "resume", labelKey: "artifacts.resume", enKey: "artifacts.resumeEn" },
   { kind: "knowledge", labelKey: "artifacts.docs", enKey: "artifacts.docsEn" },
   { kind: "projects", labelKey: "artifacts.projects", enKey: "artifacts.projectsEn" },
   { kind: "skills", labelKey: "artifacts.skills", enKey: "artifacts.skillsEn" },
+  { kind: "sessions", labelKey: "chat.sessions", enKey: "chat.sessionList" },
 ] as const;
 
 type CellKind = (typeof GRID_CELLS)[number]["kind"];
 
-function countFor(a: Artifacts | null, kind: CellKind): number {
+function countFor(a: Artifacts | null, kind: CellKind, sessionCount: number): number {
+  if (kind === "sessions") return sessionCount;
   if (!a) return 0;
   switch (kind) {
     case "resume":
@@ -57,6 +67,8 @@ function iconFor(kind: CellKind) {
       return IconProjects;
     case "skills":
       return IconSkills;
+    case "sessions":
+      return IconSessions;
   }
 }
 
@@ -84,16 +96,25 @@ export function useArtifacts(refreshKey: number) {
   return { data, loading };
 }
 
-/** The nine-grid (four-cell) artifact panel beside the chat. */
+/** The artifact strip (five cells in one row) beside the chat. */
 export default function ArtifactPanel({
   refreshKey,
   onAsk,
   onOpenChange,
+  sessionCount = 0,
+  activeSessionId = null,
+  onSwitchSession,
 }: {
   refreshKey: number;
   onAsk: (text: string) => void;
   /** Called when the user closes the detail view (used by the parent strip to collapse). */
   onOpenChange?: (open: boolean) => void;
+  /** Number of admin sessions (for the 会话 cell badge). */
+  sessionCount?: number;
+  /** Currently active session id (highlights the sessions detail list). */
+  activeSessionId?: string | null;
+  /** Switch the chat to another session. */
+  onSwitchSession?: (id: string) => void;
 }) {
   const t = useT();
   // Combine parent refreshKey (assistant tool-call turns) with local bumps
@@ -112,11 +133,11 @@ export default function ArtifactPanel({
         {loading && <IconSpinner width={14} height={14} />}
       </div>
 
-      {/* Grid: 2x2 on the panel; becomes the "nine-grid" on narrow widths */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* Grid: five cells in a single row on PC; wraps to a grid on narrow widths */}
+      <div className="grid grid-cols-5 gap-2 max-lg:grid-cols-3 max-sm:grid-cols-2">
         {GRID_CELLS.map((cell) => {
           const Icon = iconFor(cell.kind);
-          const count = countFor(data, cell.kind);
+          const count = countFor(data, cell.kind, sessionCount);
           const empty = count === 0;
           return (
             <button
@@ -146,7 +167,15 @@ export default function ArtifactPanel({
       {/* Detail view for the opened cell */}
       {openKind && (
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-lg border p-3" style={{ borderColor: "var(--rule)" }}>
-          <Detail kind={openKind} data={data} onAsk={onAsk} onClose={() => { setOpenKind(null); onOpenChange?.(false); }} onRefresh={bumpRefresh} />
+          <Detail
+            kind={openKind}
+            data={data}
+            onAsk={onAsk}
+            onClose={() => { setOpenKind(null); onOpenChange?.(false); }}
+            onRefresh={bumpRefresh}
+            activeSessionId={activeSessionId}
+            onSwitchSession={onSwitchSession}
+          />
         </div>
       )}
 
@@ -163,21 +192,40 @@ function Detail({
   onAsk,
   onClose,
   onRefresh,
+  activeSessionId = null,
+  onSwitchSession,
 }: {
   kind: CellKind;
   data: Artifacts | null;
   onAsk: (text: string) => void;
   onClose: () => void;
   onRefresh: () => void;
+  activeSessionId?: string | null;
+  onSwitchSession?: (id: string) => void;
 }) {
   const t = useT();
+  const isGuest = useIsGuest();
+  const [projBusy, setProjBusy] = useState<string | null>(null);
   const cell = GRID_CELLS.find((c) => c.kind === kind)!;
+
+  const removeProject = async (id: string, title: string) => {
+    if (!window.confirm(t("artifacts.deleteProjectConfirm", title))) return;
+    setProjBusy(id);
+    try {
+      await api.deleteProject(id);
+      onRefresh();
+    } catch (err) {
+      if (err instanceof ApiError) window.alert(err.message);
+    } finally {
+      setProjBusy(null);
+    }
+  };
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
         <span className="label text-[0.6rem]">
-          {t(cell.labelKey)} · {t(cell.enKey)}
+          {kind === "sessions" ? t(cell.enKey) : `${t(cell.labelKey)} · ${t(cell.enKey)}`}
         </span>
         <button
           type="button"
@@ -202,11 +250,14 @@ function Detail({
             title: p.name,
             sub: p.repo_url ? p.repo_url.replace(/^https?:\/\/(www\.)?github\.com\//, "") : "—",
             badge: p.repo_url ? t("artifacts.source") : t("artifacts.document"),
+            deletable: !isGuest && p.status !== "analyzing",
           }))}
           empty={t("artifacts.emptyProjects")}
           askText={t("artifacts.askProject")}
+          busyId={projBusy}
+          onDelete={(it) => removeProject(it.id, it.title)}
         />
-      ) : (
+      ) : kind === "skills" ? (
         <ListDetail
           items={data.skills.map((s) => ({
             id: s.id,
@@ -217,9 +268,88 @@ function Detail({
           empty={t("artifacts.emptySkills")}
           askText={t("artifacts.askSkills")}
         />
+      ) : (
+        <SessionsDetail activeSessionId={activeSessionId} onSwitchSession={onSwitchSession} />
       )}
     </div>
   );
+}
+
+/** Admin chat sessions list — click a row to switch the conversation. */
+function SessionsDetail({
+  activeSessionId,
+  onSwitchSession,
+}: {
+  activeSessionId?: string | null;
+  onSwitchSession?: (id: string) => void;
+}) {
+  const t = useT();
+  const [sessions, setSessions] = useState<SessionItem[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const r = await api.listAdminSessions();
+        if (active) setSessions(r.sessions ?? []);
+      } catch {
+        if (active) setSessions([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!sessions) return <Spinner label={t("chat.loadingShort")} />;
+
+  if (sessions.length === 0) {
+    return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("chat.noHistory")}</div>;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {sessions.map((s) => {
+        const isActive = s.id === activeSessionId;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => {
+              if (!isActive) onSwitchSession?.(s.id);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md border p-2.5 text-left transition-colors hover:border-[var(--accent)]"
+            style={{
+              borderColor: isActive ? "var(--accent)" : "var(--rule)",
+              background: isActive ? "var(--accent-soft)" : undefined,
+            }}
+          >
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            >
+              <IconSessions width={16} height={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{s.id}</span>
+              <span className="label block text-[0.56rem]">{fmtSessionDate(s.updated_at)}</span>
+            </span>
+            {isActive && <span className="label shrink-0 text-[0.55rem]">{t("common.current")}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function fmtSessionDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString(undefined, {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function ResumeDetail({
@@ -234,6 +364,7 @@ function ResumeDetail({
   onChanged: () => void;
 }) {
   const t = useT();
+  const isGuest = useIsGuest();
   const [preview, setPreview] = useState<{ lang: string; data: ResumeData } | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -316,15 +447,17 @@ function ResumeDetail({
           >
             {t("common.preview")}
           </button>
-          <button
-            type="button"
-            onClick={() => download(r.lang)}
-            disabled={downloading === r.lang}
-            aria-label={`${t("common.download")} PDF`}
-            className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
-          >
-            {downloading === r.lang ? <IconSpinner width={14} height={14} /> : <IconDownload width={15} height={15} />}
-          </button>
+          {!isGuest && (
+            <button
+              type="button"
+              onClick={() => download(r.lang)}
+              disabled={downloading === r.lang}
+              aria-label={`${t("common.download")} PDF`}
+              className="focus-ring grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+            >
+              {downloading === r.lang ? <IconSpinner width={14} height={14} /> : <IconDownload width={15} height={15} />}
+            </button>
+          )}
         </div>
       ))}
       <button
@@ -350,6 +483,7 @@ function UploadsSection({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const t = useT();
+  const isGuest = useIsGuest();
   if (uploads.length === 0) return null;
 
   const remove = async (u: UploadOriginal) => {
@@ -381,23 +515,27 @@ function UploadsSection({
                 {(u.size / 1024).toFixed(0)} KB · {new Date(u.created_at).toLocaleDateString()}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
-              aria-label={t("artifacts.downloadOriginal", u.original_name)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
-            >
-              <IconDownload width={13} height={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => remove(u)}
-              disabled={busy === u.stored_name}
-              aria-label={t("artifacts.deleteOriginal", u.original_name)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
-            >
-              {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
-            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => api.downloadUpload(u.stored_name, u.original_name)}
+                aria-label={t("artifacts.downloadOriginal", u.original_name)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-[var(--accent)]"
+              >
+                <IconDownload width={13} height={13} />
+              </button>
+            )}
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => remove(u)}
+                disabled={busy === u.stored_name}
+                aria-label={t("artifacts.deleteOriginal", u.original_name)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+              >
+                {busy === u.stored_name ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -420,6 +558,7 @@ function KnowledgeDetail({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const t = useT();
+  const isGuest = useIsGuest();
 
   if (knowledge.length === 0 && uploads.length === 0) {
     return <div className="py-6 text-center text-xs text-[var(--text-muted)]">{t("artifacts.emptyKnowledge")}</div>;
@@ -459,7 +598,7 @@ function KnowledgeDetail({
                 {k.source_type} · {new Date(k.created_at).toLocaleDateString()}
               </div>
             </div>
-            {stored && (
+            {stored && !isGuest && (
               <button
                 type="button"
                 onClick={() => api.downloadUpload(stored.stored_name, stored.original_name)}
@@ -469,15 +608,17 @@ function KnowledgeDetail({
                 <IconDownload width={13} height={13} />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => removeEntry(k.id, k.filename)}
-              disabled={busy === k.id}
-              aria-label={t("artifacts.deleteOriginal", k.filename)}
-              className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
-            >
-              {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
-            </button>
+            {!isGuest && (
+              <button
+                type="button"
+                onClick={() => removeEntry(k.id, k.filename)}
+                disabled={busy === k.id}
+                aria-label={t("artifacts.deleteOriginal", k.filename)}
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500"
+              >
+                {busy === k.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+              </button>
+            )}
           </div>
         );
       })}
@@ -492,10 +633,16 @@ function ListDetail({
   items,
   empty,
   askText,
+  busyId = null,
+  onDelete,
 }: {
-  items: { id: string; title: string; sub?: string; badge?: string }[];
+  items: { id: string; title: string; sub?: string; badge?: string; deletable?: boolean }[];
   empty: string;
   askText: string;
+  /** Id of the row currently being deleted (shows spinner, disables its button). */
+  busyId?: string | null;
+  /** When provided, rows with deletable=true get a delete button. */
+  onDelete?: (it: { id: string; title: string }) => void;
 }) {
   const t = useT();
   if (items.length === 0) {
@@ -514,6 +661,18 @@ function ListDetail({
             {it.sub && <div className="label truncate text-[0.54rem]">{it.sub}</div>}
           </div>
           {it.badge && <Badge tone={it.badge === "done" || it.badge === "on" ? "moss" : "neutral"}>{it.badge}</Badge>}
+          {onDelete && it.deletable && (
+            <button
+              type="button"
+              onClick={() => onDelete(it)}
+              disabled={busyId === it.id}
+              aria-label={t("artifacts.deleteProject", it.title)}
+              title={t("common.del")}
+              className="focus-ring grid h-6 w-6 shrink-0 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busyId === it.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+            </button>
+          )}
         </div>
       ))}
       <div className="pt-1 text-center text-[0.6rem] text-[var(--text-muted)]">

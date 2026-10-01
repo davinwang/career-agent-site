@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { adminRequired, readAllowed, type AppEnv } from './auth.js';
 import { cloneRepo, runProjectAnalysis, deleteProjectDir, type ProjectRow } from '../services/projects.js';
 
 /** Project shape returned to the admin frontend (heavy doc columns excluded). */
@@ -27,7 +27,7 @@ export const projectRoutes = new Hono<AppEnv>();
 /**
  * GET /api/projects -> { projects: [...] } newest first. Admin only.
  */
-projectRoutes.get('/', authRequired, async (c) => {
+projectRoutes.get('/', readAllowed, async (c) => {
   const rows = await all<ProjectDto>(
     'SELECT id, name, repo_url, status, created_at FROM projects ORDER BY created_at DESC',
   );
@@ -38,7 +38,7 @@ projectRoutes.get('/', authRequired, async (c) => {
  * POST /api/projects -> clone a repo and register it. Body: { repo_url|url, name? }
  * The clone is awaited (so failures surface), analysis is triggered separately.
  */
-projectRoutes.post('/', authRequired, async (c) => {
+projectRoutes.post('/', adminRequired, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = addRepoSchema.safeParse(raw);
   if (!parsed.success) {
@@ -64,7 +64,7 @@ projectRoutes.post('/', authRequired, async (c) => {
  * POST /api/projects/:id/analyze -> kick off LLM analysis in the background.
  * Returns 202 immediately; poll GET /api/projects for the status transition.
  */
-projectRoutes.post('/:id/analyze', authRequired, async (c) => {
+projectRoutes.post('/:id/analyze', adminRequired, async (c) => {
   const id = c.req.param('id');
   const project = await get<ProjectRow>('SELECT id, status FROM projects WHERE id = ?', [id]);
   if (!project) {
@@ -88,7 +88,7 @@ projectRoutes.post('/:id/analyze', authRequired, async (c) => {
  * GET /api/projects/:id/doc -> { doc, resume_content }. Admin only.
  * Declared before DELETE so the literal segments don't collide.
  */
-projectRoutes.get('/:id/doc', authRequired, async (c) => {
+projectRoutes.get('/:id/doc', adminRequired, async (c) => {
   const id = c.req.param('id');
   const project = await get<ProjectRow>(
     'SELECT id, doc, resume_content FROM projects WHERE id = ?',
@@ -114,7 +114,7 @@ projectRoutes.get('/:id/doc', authRequired, async (c) => {
 /**
  * DELETE /api/projects/:id -> remove the record and its cloned directory.
  */
-projectRoutes.delete('/:id', authRequired, async (c) => {
+projectRoutes.delete('/:id', adminRequired, async (c) => {
   const id = c.req.param('id');
   const project = await get<ProjectRow>(
     'SELECT id, name, repo_url FROM projects WHERE id = ?',

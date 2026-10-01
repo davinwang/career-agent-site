@@ -2,7 +2,7 @@ import { randomUUID as uuid } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { authRequired, adminRequired, readAllowed, type AppEnv } from './auth.js';
 
 interface SessionRow {
   id: string;
@@ -10,6 +10,7 @@ interface SessionRow {
   created_at: string;
   updated_at: string;
   metadata: string | null;
+  message_count: number;
 }
 
 interface MessageRow {
@@ -40,21 +41,27 @@ export const sessionRoutes = new Hono<AppEnv>();
 /**
  * GET /api/sessions?side=recruiter|admin -> list sessions. Admin only.
  */
-sessionRoutes.get('/', authRequired, async (c) => {
+sessionRoutes.get('/', readAllowed, async (c) => {
   const side = c.req.query('side');
   let rows: SessionRow[];
+  // message_count lets the admin UI hide sessions that were opened but never
+  // received any message (recruiters who just glanced at the portal).
   if (side) {
     const parsed = sideSchema.safeParse(side);
     if (!parsed.success) {
       return c.json({ error: 'side must be "recruiter" or "admin"' }, 400);
     }
     rows = await all<SessionRow>(
-      'SELECT id, side, created_at, updated_at, metadata FROM sessions WHERE side = ? ORDER BY updated_at DESC',
+      `SELECT s.id, s.side, s.created_at, s.updated_at, s.metadata,
+              (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+       FROM sessions s WHERE s.side = ? ORDER BY s.updated_at DESC`,
       [parsed.data],
     );
   } else {
     rows = await all<SessionRow>(
-      'SELECT id, side, created_at, updated_at, metadata FROM sessions ORDER BY updated_at DESC',
+      `SELECT s.id, s.side, s.created_at, s.updated_at, s.metadata,
+              (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id) AS message_count
+       FROM sessions s ORDER BY s.updated_at DESC`,
     );
   }
   return c.json({ sessions: rows });
@@ -66,7 +73,7 @@ sessionRoutes.get('/', authRequired, async (c) => {
  * Server-side session identity: the admin chat follows the authenticated user
  * across browsers/devices instead of a per-browser localStorage id.
  */
-sessionRoutes.get('/current', authRequired, async (c) => {
+sessionRoutes.get('/current', adminRequired, async (c) => {
   const side = c.req.query('side') ?? 'admin';
   const parsed = sideSchema.safeParse(side);
   if (!parsed.success) {
@@ -103,7 +110,7 @@ sessionRoutes.get('/current', authRequired, async (c) => {
  * caller. The fresh session carries the owner marker, so it immediately
  * becomes the "current" session (latest updated_at wins) on every device.
  */
-sessionRoutes.post('/current', authRequired, async (c) => {
+sessionRoutes.post('/current', adminRequired, async (c) => {
   const side = c.req.query('side') ?? 'admin';
   const parsed = sideSchema.safeParse(side);
   if (!parsed.success || parsed.data !== 'admin') {

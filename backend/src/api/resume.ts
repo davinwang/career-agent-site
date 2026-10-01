@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { adminRequired, type AppEnv } from './auth.js';
 import { generateResumePdf, type ResumeData } from '../services/pdf.js';
 
 interface ResumeRow {
@@ -88,7 +88,7 @@ const putBodySchema = z.object({
  * PUT /api/resume/:lang -> upsert resume JSON. Admin only.
  * Body: { data: <resume object> }
  */
-resumeRoutes.put('/:lang', authRequired, async (c) => {
+resumeRoutes.put('/:lang', adminRequired, async (c) => {
   const lang = c.req.param('lang') || 'zh';
   const raw = await c.req.json().catch(() => null);
   const parsed = putBodySchema.safeParse(raw);

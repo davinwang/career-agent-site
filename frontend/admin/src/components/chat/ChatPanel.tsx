@@ -6,6 +6,7 @@ import ChatInput from "./ChatInput";
 import ArtifactPanel from "./ArtifactPanel";
 import { ErrorNote, EmptyState } from "../ui";
 import { useT } from "../../lib/i18n";
+import { useIsGuest } from "../../hooks/useIsGuest";
 import { IconChat, IconChevron, IconResume } from "../icons";
 
 interface SessionItem {
@@ -38,6 +39,7 @@ async function fetchTitle(id: string, emptyTitle: string, unreadable: string): P
 
 export default function ChatPanel() {
   const t = useT();
+  const isGuest = useIsGuest();
   const {
     sessionId, messages, loadingHistory, streaming, error,
     send, stop, switchSession, newSession, setError,
@@ -64,6 +66,20 @@ export default function ChatPanel() {
       setRefreshKey((k) => k + 1);
     }
   }, [messages]);
+
+  // Keep the session count fresh for the artifacts "会话" cell (cheap list-only
+  // fetch; titles are only resolved for the open dropdown).
+  const loadSessionCount = useCallback(async () => {
+    try {
+      const r = await api.listAdminSessions();
+      setSessions(r.sessions ?? []);
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+  useEffect(() => {
+    void loadSessionCount();
+  }, [loadSessionCount, refreshKey, sessionId]);
 
   // Auto-scroll to the newest content.
   useEffect(() => {
@@ -142,7 +158,8 @@ export default function ChatPanel() {
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="label text-[0.62rem]">{t("chat.brand")}</div>
         <div className="flex items-center gap-2" ref={listRef}>
-          {/* Session switcher */}
+          {/* Session switcher (admin only) */}
+          {!isGuest && (
           <div className="relative">
             <button
               type="button"
@@ -218,8 +235,20 @@ export default function ChatPanel() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
+
+      {/* Guest banner */}
+      {isGuest && (
+        <div
+          className="mb-3 rounded-lg border px-3 py-2 text-[0.66rem]"
+          style={{ borderColor: "var(--rule)", background: "var(--accent-soft)" }}
+          role="note"
+        >
+          {t("chat.guestBanner")}
+        </div>
+      )}
 
       {/* Artifact drawer ABOVE the chat: PC default-open, mobile default-closed */}
       <div className="mb-3 shrink-0">
@@ -255,7 +284,14 @@ export default function ChatPanel() {
             className="mt-2 max-h-[46vh] overflow-y-auto rounded-lg border p-3"
             style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
           >
-            <ArtifactPanel refreshKey={refreshKey} onAsk={send} onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }} />
+            <ArtifactPanel
+              refreshKey={refreshKey}
+              onAsk={send}
+              onOpenChange={(open) => { if (!open) setArtifactsOpen(false); }}
+              sessionCount={sessions.length}
+              activeSessionId={sessionId}
+              onSwitchSession={(id) => switchSession(id)}
+            />
           </div>
         )}
       </div>

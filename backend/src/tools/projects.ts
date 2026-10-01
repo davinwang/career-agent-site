@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { get, all } from '../db/client.js';
-import { cloneRepo, runProjectAnalysis, type ProjectRow } from '../services/projects.js';
+import { get, all, run } from '../db/client.js';
+import { cloneRepo, runProjectAnalysis, deleteProjectDir, type ProjectRow } from '../services/projects.js';
 import { getGithubToken, listRepos } from '../services/github.js';
 
 /**
@@ -139,6 +139,40 @@ export const listProjects = createTool({
       return { projects: rows, count: rows.length };
     } catch (err: any) {
       return { error: `Failed to list projects: ${err.message}` };
+    }
+  },
+});
+
+/**
+ * Delete a project: removes the DB record and the cloned repo directory. Admin only.
+ */
+export const deleteProject = createTool({
+  id: 'delete-project',
+  description:
+    'Delete a project by id: removes its database record and the cloned repository directory. ' +
+    'Refuses while the project is being analyzed. Irreversible — confirm with the user first.',
+  inputSchema: z.object({
+    projectId: z.string().describe('The project ID (from listProjects)'),
+  }),
+  execute: async (context) => {
+    try {
+      const project = await get<ProjectRow>(
+        'SELECT id, name, repo_url, status FROM projects WHERE id = ?',
+        [context.projectId],
+      );
+      if (!project) {
+        return { error: `Project not found: ${context.projectId}` };
+      }
+      if (project.status === 'analyzing') {
+        return { error: '项目正在分析中，请等分析完成（或失败）后再删除。' };
+      }
+
+      await run('DELETE FROM projects WHERE id = ?', [context.projectId]);
+      await deleteProjectDir(project);
+
+      return { ok: true, id: project.id, name: project.name };
+    } catch (err: any) {
+      return { error: `Failed to delete project: ${err.message}` };
     }
   },
 });

@@ -23,6 +23,14 @@ export type AppEnv = {
   };
 };
 
+/** JWT payload roles. */
+type Role = 'admin' | 'guest';
+
+interface AuthedJwt extends jwt.JwtPayload {
+  username: string;
+  role?: Role;
+}
+
 interface AdminCredentialRow {
   username: string;
   password_hash: string;
@@ -33,20 +41,26 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-function signToken(username: string): string {
-  return jwt.sign({ sub: username, username }, config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn,
+function signToken(username: string, role: Role = 'admin'): string {
+  const expiresIn = role === 'guest' ? config.guestExpiresIn : config.jwtExpiresIn;
+  return jwt.sign({ sub: username, username, role }, config.jwtSecret, {
+    expiresIn,
   } as jwt.SignOptions);
 }
 
 /** Extract and verify the Bearer token; returns the username or null. */
 export function verifyToken(headerValue: string | undefined): string | null {
+  return verifyAuth(headerValue)?.username ?? null;
+}
+
+/** Full verification: username + role (guest tokens carry role='guest'). */
+export function verifyAuth(headerValue: string | undefined): { username: string; role: Role } | null {
   if (!headerValue || !headerValue.startsWith('Bearer ')) return null;
   const token = headerValue.slice('Bearer '.length).trim();
   if (!token) return null;
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
-    return payload.username ?? payload.sub ?? null;
+    const payload = jwt.verify(token, config.jwtSecret) as AuthedJwt;
+    return { username: payload.username ?? payload.sub ?? '', role: payload.role === 'guest' ? 'guest' : 'admin' };
   } catch {
     return null;
   }
@@ -65,7 +79,73 @@ export const authRequired: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
 };
 
+/**
+ * Strict admin-only middleware: like authRequired but REJECTS guest tokens.
+ * Use on every state-changing endpoint and on sensitive reads.
+ */
+export const adminRequired: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const auth = verifyAuth(c.req.header('Authorization'));
+  if (!auth) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  if (auth.role === 'guest') {
+    return c.json({ error: 'Forbidden: guest sessions are read-only' }, 403);
+  }
+  c.set('username', auth.username);
+  await next();
+};
+
+/**
+ * Read middleware: admin tokens always pass; guest tokens pass only when
+ * guest mode is enabled AND the request is a safe read (GET/HEAD/OPTIONS).
+ */
+export const readAllowed: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const auth = verifyAuth(c.req.header('Authorization'));
+  if (!auth) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  if (auth.role === 'guest') {
+    if (!config.guestMode) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
+      return c.json({ error: 'Forbidden: guest sessions are read-only' }, 403);
+    }
+  }
+  c.set('username', auth.username);
+  await next();
+};
+
+/** True when the caller carries a valid NON-guest (admin) token. */
+export function isAdminToken(headerValue: string | undefined): boolean {
+  const auth = verifyAuth(headerValue);
+  return auth !== null && auth.role === 'admin';
+}
+
 export const authRoutes = new Hono<AppEnv>();
+
+/**
+ * GET /api/auth/guest-status -> { enabled: boolean }
+ * Public (no auth): lets the login page decide whether to render the
+ * guest button at all.
+ */
+authRoutes.get('/guest-status', (c) => {
+  return c.json({ enabled: config.guestMode });
+});
+
+/**
+ * POST /api/auth/guest -> { token, username, guest: true }
+ * Only when guest mode is enabled. Returns a short-lived JWT whose role is
+ * 'guest'; every state-changing endpoint rejects it (403) server-side, and
+ * the admin agent chat refuses to run for it.
+ */
+authRoutes.post('/guest', (c) => {
+  if (!config.guestMode) {
+    return c.json({ error: 'Guest mode is disabled' }, 404);
+  }
+  const token = signToken('guest', 'guest');
+  return c.json({ token, username: 'guest', guest: true });
+});
 
 /** POST /api/auth/login -> { token } */
 authRoutes.post('/login', async (c) => {
@@ -95,7 +175,7 @@ authRoutes.post('/login', async (c) => {
 });
 
 /** GET /api/auth/me -> the authenticated username (handy for the admin UI). */
-authRoutes.get('/me', authRequired, (c) => {
+authRoutes.get('/me', adminRequired, (c) => {
   return c.json({ username: c.get('username') });
 });
 
@@ -106,7 +186,7 @@ authRoutes.get('/me', authRequired, (c) => {
  * `redirect` is where GitHub sends the user back; it must be registered on the
  * OAuth App and live under the admin portal (callback page handles the code).
  */
-authRoutes.get('/github/login', authRequired, (c) => {
+authRoutes.get('/github/login', adminRequired, (c) => {
   if (!oauthConfigured()) {
     return c.json({ error: '服务端未配置 GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET' }, 400);
   }
@@ -142,7 +222,7 @@ authRoutes.get('/github/callback', async (c) => {
 /**
  * DELETE /api/auth/github/unbind -> remove the OAuth binding (PAT untouched).
  */
-authRoutes.delete('/github/unbind', authRequired, async (c) => {
+authRoutes.delete('/github/unbind', adminRequired, async (c) => {
   await clearOAuthToken();
   return c.json({ ok: true });
 });

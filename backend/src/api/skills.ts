@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { get, all, run } from '../db/client.js';
-import { authRequired, type AppEnv } from './auth.js';
+import { authRequired, adminRequired, readAllowed, type AppEnv } from './auth.js';
 
 interface SkillRow {
   id: string;
@@ -45,7 +45,7 @@ export const skillRoutes = new Hono<AppEnv>();
 /**
  * GET /api/skills -> { skills: [...] } ordered by priority DESC. Admin only.
  */
-skillRoutes.get('/', authRequired, async (c) => {
+skillRoutes.get('/', readAllowed, async (c) => {
   const rows = await all<SkillRow>(
     'SELECT id, name, prompt, enabled, priority, created_at FROM skills ORDER BY priority DESC, created_at ASC',
   );
@@ -55,7 +55,7 @@ skillRoutes.get('/', authRequired, async (c) => {
 /**
  * POST /api/skills -> create a skill. Body: { name, prompt, priority? }
  */
-skillRoutes.post('/', authRequired, async (c) => {
+skillRoutes.post('/', adminRequired, async (c) => {
   const raw = await c.req.json().catch(() => null);
   const parsed = createSkillSchema.safeParse(raw);
   if (!parsed.success) {
@@ -75,7 +75,7 @@ skillRoutes.post('/', authRequired, async (c) => {
 /**
  * PUT /api/skills/:id -> partial update. Body: { name?, prompt?, enabled?, priority? }
  */
-skillRoutes.put('/:id', authRequired, async (c) => {
+skillRoutes.put('/:id', adminRequired, async (c) => {
   const id = c.req.param('id');
   const existing = await get<SkillRow>('SELECT id FROM skills WHERE id = ?', [id]);
   if (!existing) {
@@ -115,7 +115,7 @@ skillRoutes.put('/:id', authRequired, async (c) => {
 /**
  * DELETE /api/skills/:id -> remove a skill.
  */
-skillRoutes.delete('/:id', authRequired, async (c) => {
+skillRoutes.delete('/:id', adminRequired, async (c) => {
   const id = c.req.param('id');
   const existing = await get<SkillRow>('SELECT id FROM skills WHERE id = ?', [id]);
   if (!existing) {

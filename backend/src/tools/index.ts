@@ -11,7 +11,7 @@
 
 import { getFullResume, updateResumeSection } from './resume.js';
 import { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
-import { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
+import { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos, deleteProject } from './projects.js';
 import { rememberFact, recallFacts, forgetFact } from './memory.js';
 import { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 import { findLogo } from './logo.js';
@@ -19,7 +19,7 @@ import { findLogo } from './logo.js';
 // Re-export individual tools for direct use if needed
 export { getFullResume, updateResumeSection } from './resume.js';
 export { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js';
-export { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos } from './projects.js';
+export { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos, deleteProject } from './projects.js';
 export { rememberFact, recallFacts, forgetFact } from './memory.js';
 export { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 export { findLogo } from './logo.js';
@@ -40,6 +40,7 @@ export const WRITE_TOOLS = {
   addGithubRepo,
   analyzeProject,
   getProjectDoc,
+  deleteProject,
   rememberFact,
   forgetFact,
   createSkill,
