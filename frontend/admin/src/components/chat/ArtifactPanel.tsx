@@ -204,7 +204,22 @@ function Detail({
   onSwitchSession?: (id: string) => void;
 }) {
   const t = useT();
+  const isGuest = useIsGuest();
+  const [projBusy, setProjBusy] = useState<string | null>(null);
   const cell = GRID_CELLS.find((c) => c.kind === kind)!;
+
+  const removeProject = async (id: string, title: string) => {
+    if (!window.confirm(t("artifacts.deleteProjectConfirm", title))) return;
+    setProjBusy(id);
+    try {
+      await api.deleteProject(id);
+      onRefresh();
+    } catch (err) {
+      if (err instanceof ApiError) window.alert(err.message);
+    } finally {
+      setProjBusy(null);
+    }
+  };
 
   return (
     <div>
@@ -235,9 +250,12 @@ function Detail({
             title: p.name,
             sub: p.repo_url ? p.repo_url.replace(/^https?:\/\/(www\.)?github\.com\//, "") : "—",
             badge: p.repo_url ? t("artifacts.source") : t("artifacts.document"),
+            deletable: !isGuest && p.status !== "analyzing",
           }))}
           empty={t("artifacts.emptyProjects")}
           askText={t("artifacts.askProject")}
+          busyId={projBusy}
+          onDelete={(it) => removeProject(it.id, it.title)}
         />
       ) : kind === "skills" ? (
         <ListDetail
@@ -615,10 +633,16 @@ function ListDetail({
   items,
   empty,
   askText,
+  busyId = null,
+  onDelete,
 }: {
-  items: { id: string; title: string; sub?: string; badge?: string }[];
+  items: { id: string; title: string; sub?: string; badge?: string; deletable?: boolean }[];
   empty: string;
   askText: string;
+  /** Id of the row currently being deleted (shows spinner, disables its button). */
+  busyId?: string | null;
+  /** When provided, rows with deletable=true get a delete button. */
+  onDelete?: (it: { id: string; title: string }) => void;
 }) {
   const t = useT();
   if (items.length === 0) {
@@ -637,6 +661,18 @@ function ListDetail({
             {it.sub && <div className="label truncate text-[0.54rem]">{it.sub}</div>}
           </div>
           {it.badge && <Badge tone={it.badge === "done" || it.badge === "on" ? "moss" : "neutral"}>{it.badge}</Badge>}
+          {onDelete && it.deletable && (
+            <button
+              type="button"
+              onClick={() => onDelete(it)}
+              disabled={busyId === it.id}
+              aria-label={t("artifacts.deleteProject", it.title)}
+              title={t("common.del")}
+              className="focus-ring grid h-6 w-6 shrink-0 place-items-center rounded-md text-[var(--text-muted)] hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busyId === it.id ? <IconSpinner width={13} height={13} /> : <IconClose width={13} height={13} />}
+            </button>
+          )}
         </div>
       ))}
       <div className="pt-1 text-center text-[0.6rem] text-[var(--text-muted)]">

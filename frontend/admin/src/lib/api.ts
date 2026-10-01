@@ -303,6 +303,9 @@ const api = {
   getProjectDoc(id: string): Promise<ProjectDoc> {
     return request(`/api/projects/${encodeURIComponent(id)}/doc`);
   },
+  deleteProject(id: string): Promise<void> {
+    return request(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
 
   // Skills
   listSkills(): Promise<{ skills: Skill[] }> {
