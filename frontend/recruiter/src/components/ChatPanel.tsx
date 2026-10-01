@@ -12,6 +12,7 @@ import { getSuggestedPrompts, type UiStrings } from '../lib/i18n';
 import { renderMarkdown } from '../lib/markdown';
 import { clockTime, cx } from '../lib/utils';
 import type { ChatMessage } from '../types/resume';
+import { ASK_EVENT } from './resume/Projects';
 import {
   AlertIcon,
   ArrowRight,
@@ -195,6 +196,25 @@ export function ChatPanel({
     e.preventDefault();
     submit();
   };
+
+  // Project question cards (resume pane) dispatch ask events. `direct` = the
+  // question is answerable from the dossier alone → send it right away;
+  // otherwise only fill the composer so the recruiter can attach material.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string; direct?: boolean }>).detail;
+      const text = detail?.text?.trim();
+      if (!text) return;
+      setPinned(true);
+      if (detail?.direct && status !== 'streaming') {
+        send(text);
+      } else {
+        setDraft(text);
+      }
+    };
+    window.addEventListener(ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_EVENT, onAsk);
+  }, [send, status]);
 
   const handleNewThread = () => {
     if (messages.length && !window.confirm(t.chat.clearConfirm)) return;

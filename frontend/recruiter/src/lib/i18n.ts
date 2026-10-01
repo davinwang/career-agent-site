@@ -38,6 +38,14 @@ export interface UiStrings {
     emptyProjects: string;
     present: string;
   };
+  projects: {
+    askTitle: string;
+    askHint: string;
+    detailsTitle: string;
+    detailsHint: string;
+    askDirect: string;
+    askPrefill: string;
+  };
   chat: {
     title: string;
     subtitle: string;
@@ -111,6 +119,14 @@ const zh: UiStrings = {
     keyPoints: '关键工作',
     emptyProjects: '暂无项目记录',
     present: '至今',
+  },
+  projects: {
+    askTitle: '向 AI 助手追问',
+    askHint: '点击问题直接获得回答；标注「需补充」的问题会先填入输入框，由你补充材料后发送',
+    detailsTitle: '项目详情',
+    detailsHint: '点击展开完整介绍',
+    askDirect: '直接问',
+    askPrefill: '需补充',
   },
   chat: {
     title: 'AI 招聘助手',
@@ -186,6 +202,14 @@ const en: UiStrings = {
     keyPoints: 'Scope of work',
     emptyProjects: 'No projects recorded yet.',
     present: 'Present',
+  },
+  projects: {
+    askTitle: 'Ask the AI agent',
+    askHint: 'Click a question to get an answer right away; ones marked "needs input" are placed in the composer for you to attach material first',
+    detailsTitle: 'Project details',
+    detailsHint: 'Click to expand the full write-up',
+    askDirect: 'Ask',
+    askPrefill: 'Needs input',
   },
   chat: {
     title: 'Recruiting Agent',

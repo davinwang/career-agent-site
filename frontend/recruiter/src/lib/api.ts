@@ -276,6 +276,30 @@ export async function fetchLanguages(): Promise<string[]> {
   }
 }
 
+/** One recruiter-facing question generated during project analysis. */
+export interface RecruiterQuestion {
+  question: string;
+  /** true = answering needs candidate-supplied material → prefill, don't send. */
+  needs_input: boolean;
+}
+
+/**
+ * `GET /api/projects/questions` — per-project recruiter questions produced by
+ * the admin agent's source-code analysis. Best-effort: any failure yields {}.
+ */
+export async function fetchProjectQuestions(): Promise<Record<string, RecruiterQuestion[]>> {
+  try {
+    const res = await fetch(`${API_BASE}/api/projects/questions`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return {};
+    const payload = await readJson<{ questions?: Record<string, RecruiterQuestion[]> }>(res);
+    return payload.questions ?? {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Register the anonymous session so message history can be persisted.
  * A 409 just means "already known" and is not an error.

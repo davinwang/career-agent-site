@@ -25,6 +25,35 @@ const addRepoSchema = z
 export const projectRoutes = new Hono<AppEnv>();
 
 /**
+ * GET /api/projects/questions -> { questions: { [projectName]: RecruiterQuestion[] } }
+ * Public: the recruiter portal renders these under each project card.
+ * Only projects whose analysis finished (status=done) are included, and only
+ * the safe fields (question text + needs_input flag) leave the server.
+ */
+projectRoutes.get('/questions', async (c) => {
+  const rows = await all<{ name: string; resume_content: string | null }>(
+    "SELECT name, resume_content FROM projects WHERE status = 'done' AND resume_content IS NOT NULL ORDER BY created_at ASC",
+  );
+  const questions: Record<string, { question: string; needs_input: boolean }[]> = {};
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.resume_content!) as { recruiter_questions?: unknown };
+      if (!Array.isArray(parsed.recruiter_questions)) continue;
+      const list = parsed.recruiter_questions
+        .filter(
+          (q): q is { question: string; needs_input?: boolean } =>
+            typeof q === 'object' && q !== null && typeof (q as { question?: unknown }).question === 'string',
+        )
+        .map((q) => ({ question: q.question, needs_input: q.needs_input === true }));
+      if (list.length > 0) questions[row.name] = list;
+    } catch {
+      /* corrupt resume_content — skip */
+    }
+  }
+  return c.json({ questions });
+});
+
+/**
  * GET /api/projects -> { projects: [...] } newest first. Admin only.
  */
 projectRoutes.get('/', readAllowed, async (c) => {

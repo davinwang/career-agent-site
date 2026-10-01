@@ -725,6 +725,10 @@ ${gitHistoryStr}
   "period": "时间段(如能推断)",
   "content": ["项目描述要点1", "项目描述要点2", "项目描述要点3"],
   "highlights": ["技术亮点1", "技术亮点2", "技术亮点3"],
+  "recruiter_questions": [
+    {"question": "猎头可能追问的问题1（中文）", "needs_input": false},
+    {"question": "猎头可能追问的问题2（中文）", "needs_input": true}
+  ],
   "repo_link": null,
   "open_source": false
 }
@@ -732,6 +736,10 @@ ${gitHistoryStr}
 注意：
 - 简历条目要突出技术亮点和业务价值，不要泛泛而谈${gitHistoryInstruction}
 - repo_link 和 open_source 无需你判断（系统会根据仓库实际可见性自动填写），保持 null/false 即可
+- recruiter_questions：站在猎头/招聘方视角，预测他们看完这个项目介绍后最想追问的 3-5 个问题。
+  - needs_input=false：仅凭简历和源码就能直接回答的问题（如「这个项目的 QPS 峰值是多少」「为什么选 X 而不是 Y」）——猎头端可以一键直接向 AI 助手发送。
+  - needs_input=true：需要候选人补充材料才能回答的问题（如「能提供压测报告吗」「有客户证言吗」）——猎头端只会把问题填入输入框，由猎头自行补充后发送。
+  - 问题用中文书写（猎头端 AI 助手会镜像提问语言）。
 - content 3-5条，highlights 2-4条`;
 }
 
