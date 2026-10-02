@@ -276,9 +276,10 @@ export async function fetchLanguages(): Promise<string[]> {
   }
 }
 
-/** One recruiter-facing question generated during project analysis. */
+/** One recruiter-facing question generated during project analysis (bilingual). */
 export interface RecruiterQuestion {
-  question: string;
+  question_zh: string;
+  question_en: string;
   /** true = answering needs candidate-supplied material → prefill, don't send. */
   needs_input: boolean;
 }

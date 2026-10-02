@@ -34,17 +34,40 @@ projectRoutes.get('/questions', async (c) => {
   const rows = await all<{ name: string; resume_content: string | null }>(
     "SELECT name, resume_content FROM projects WHERE status = 'done' AND resume_content IS NOT NULL ORDER BY created_at ASC",
   );
-  const questions: Record<string, { question: string; needs_input: boolean }[]> = {};
+  const questions: Record<
+    string,
+    { question_zh: string; question_en: string; needs_input: boolean }[]
+  > = {};
   for (const row of rows) {
     try {
       const parsed = JSON.parse(row.resume_content!) as { recruiter_questions?: unknown };
       if (!Array.isArray(parsed.recruiter_questions)) continue;
       const list = parsed.recruiter_questions
+        .map((q) => {
+          if (typeof q !== 'object' || q === null) return null;
+          const raw = q as {
+            question?: unknown;
+            question_zh?: unknown;
+            question_en?: unknown;
+            needs_input?: unknown;
+          };
+          // Legacy analyses stored a single `question` (Chinese); reuse it for
+          // both languages so old data keeps rendering after the switch.
+          const zh =
+            typeof raw.question_zh === 'string'
+              ? raw.question_zh
+              : typeof raw.question === 'string'
+                ? raw.question
+                : null;
+          const en = typeof raw.question_en === 'string' ? raw.question_en : zh;
+          if (!zh) return null;
+          return { question_zh: zh, question_en: en ?? zh, needs_input: raw.needs_input === true };
+        })
         .filter(
-          (q): q is { question: string; needs_input?: boolean } =>
-            typeof q === 'object' && q !== null && typeof (q as { question?: unknown }).question === 'string',
-        )
-        .map((q) => ({ question: q.question, needs_input: q.needs_input === true }));
+          (
+            q,
+          ): q is { question_zh: string; question_en: string; needs_input: boolean } => q !== null,
+        );
       if (list.length > 0) questions[row.name] = list;
     } catch {
       /* corrupt resume_content — skip */

@@ -67,6 +67,7 @@ export function Projects({ items, lang, t }: Props) {
                   ([k]) => project.name.startsWith(k) || k.startsWith(project.name),
                 )?.[1] ?? []
               }
+              isZh={isZh}
               t={t}
               onAsk={ask}
             />
@@ -81,12 +82,14 @@ function ProjectCard({
   index,
   project,
   questions,
+  isZh,
   t,
   onAsk,
 }: {
   index: number;
   project: ResumeProject;
   questions: RecruiterQuestion[];
+  isZh: boolean;
   t: UiStrings;
   onAsk: (text: string, direct: boolean) => void;
 }) {
@@ -138,29 +141,32 @@ function ProjectCard({
             {t.projects.askTitle}
           </p>
           <div className="flex flex-col gap-1.5">
-            {questions.map((q, qi) => (
-              <button
-                key={qi}
-                type="button"
-                onClick={() => onAsk(q.question, !q.needs_input)}
-                className="group flex w-full items-start gap-2.5 border border-rule bg-raised/60 px-3 py-2 text-left transition-colors duration-150 hover:border-accent/60"
-                title={q.needs_input ? t.projects.askHint : t.projects.askDirect}
-              >
-                <span
-                  className={[
-                    'mt-[2px] shrink-0 border px-1 py-[1px] font-mono text-[8.5px] tracking-[0.14em] uppercase',
-                    q.needs_input
-                      ? 'border-gold/55 bg-goldsoft text-gold'
-                      : 'border-teal/45 bg-tealsoft text-teal',
-                  ].join(' ')}
+            {questions.map((q, qi) => {
+              const text = isZh ? q.question_zh : q.question_en;
+              return (
+                <button
+                  key={qi}
+                  type="button"
+                  onClick={() => onAsk(text, !q.needs_input)}
+                  className="group flex w-full items-start gap-2.5 border border-rule bg-raised/60 px-3 py-2 text-left transition-colors duration-150 hover:border-accent/60"
+                  title={q.needs_input ? t.projects.askHint : t.projects.askDirect}
                 >
-                  {q.needs_input ? t.projects.askPrefill : t.projects.askDirect}
-                </span>
-                <span className="min-w-0 flex-1 text-[13px] leading-[1.7] text-soft group-hover:text-ink">
-                  {q.question}
-                </span>
-              </button>
-            ))}
+                  <span
+                    className={[
+                      'mt-[2px] shrink-0 border px-1 py-[1px] font-mono text-[8.5px] tracking-[0.14em] uppercase',
+                      q.needs_input
+                        ? 'border-gold/55 bg-goldsoft text-gold'
+                        : 'border-teal/45 bg-tealsoft text-teal',
+                    ].join(' ')}
+                  >
+                    {q.needs_input ? t.projects.askPrefill : t.projects.askDirect}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[13px] leading-[1.7] text-soft group-hover:text-ink">
+                    {text}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
