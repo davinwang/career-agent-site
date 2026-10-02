@@ -3,6 +3,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import type { UiStrings } from '../lib/i18n';
 import { cx } from '../lib/utils';
 import { API_BASE } from '../lib/api';
+import { ASK_EVENT } from './resume/Projects';
 import { ChatIcon, DownloadIcon } from './Icons';
 import LanguageSwitch from './LanguageSwitch';
 import ThemeToggle from './ThemeToggle';
@@ -141,6 +142,16 @@ export function Layout({
   }, [isDesktop]);
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
+
+  /* Mobile: asking a question from the résumé (project prompt cards) happens
+     on the résumé pane — pop the chat sheet open so the recruiter sees the
+     conversation instead of it running invisibly behind the sheet. */
+  useEffect(() => {
+    if (isDesktop) return undefined;
+    const onAsk = () => setSheetOpen(true);
+    window.addEventListener(ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_EVENT, onAsk);
+  }, [isDesktop]);
 
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-paper">
