@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { UiStrings } from '../lib/i18n';
 import type { ResumeData } from '../types/resume';
 import { AlertIcon, RefreshIcon } from './Icons';
@@ -65,6 +66,32 @@ function Skeleton({ t }: { t: UiStrings }) {
  */
 export function ResumePanel({ data, loading, error, offline, lang, t, stamp, onRetry }: Props) {
   const isZh = lang.toLowerCase().startsWith('zh');
+  const [activeSection, setActiveSection] = useState<string>('');
+
+  // Scroll-spy: highlight the section currently in view, same visual treatment
+  // as the language switch's active button (accent thumb + accent-ink text).
+  useEffect(() => {
+    const container = document.getElementById('resume-scroll');
+    if (!container || !data) {
+      setActiveSection('');
+      return;
+    }
+    const targets = SECTIONS.map((s) => document.getElementById(s.id)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (!targets.length) return;
+    const pick = () => {
+      const top = container.getBoundingClientRect().top;
+      let current = targets[0].id;
+      for (const el of targets) {
+        if (el.getBoundingClientRect().top - top <= 120) current = el.id;
+      }
+      setActiveSection(current);
+    };
+    pick();
+    container.addEventListener('scroll', pick, { passive: true });
+    return () => container.removeEventListener('scroll', pick);
+  }, [data]);
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
@@ -78,9 +105,18 @@ export function ResumePanel({ data, loading, error, offline, lang, t, stamp, onR
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="group flex items-baseline gap-1.5 whitespace-nowrap py-1 font-mono text-[10.5px] tracking-[0.14em] text-mute uppercase transition-colors duration-200 hover:text-accent"
+                aria-current={activeSection === s.id ? 'true' : undefined}
+                className={`group flex items-baseline gap-1.5 whitespace-nowrap rounded-sm py-1 font-mono text-[10.5px] tracking-[0.14em] uppercase transition-colors duration-200 ${
+                  activeSection === s.id
+                    ? 'bg-accent px-1.5 text-accentink'
+                    : 'text-mute hover:text-accent'
+                }`}
               >
-                <span className="sys-num text-[9px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <span
+                  className={`sys-num text-[9px] transition-opacity duration-200 ${
+                    activeSection === s.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                >
                   {s.n}
                 </span>
                 {isZh ? s.zh : s.en}
@@ -92,6 +128,7 @@ export function ResumePanel({ data, loading, error, offline, lang, t, stamp, onR
 
       {/* scrollable body ----------------------------------------------------- */}
       <div
+        id="resume-scroll"
         className="scroll-slim min-h-0 flex-1 overflow-y-auto overscroll-contain"
         role="region"
         aria-label={t.a11y.resumePanel}
