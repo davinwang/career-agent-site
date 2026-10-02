@@ -81,7 +81,7 @@ export const analyzeProject = createTool({
 });
 
 /**
- * Get a project's understanding doc and resume content. Admin only.
+ * Get a project's understanding doc and resume content. Read-only — both agents.
  */
 export const getProjectDoc = createTool({
   id: 'get-project-doc',

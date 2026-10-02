@@ -24,22 +24,24 @@ export { rememberFact, recallFacts, forgetFact } from './memory.js';
 export { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
 export { findLogo } from './logo.js';
 
-/** Read-only tools available to BOTH agents. */
+/** Read-only tools available to BOTH agents. getProjectDoc is a pure read of
+ * the project understanding doc — without it the recruiter agent can't answer
+ * questions about stats/summaries that came from repo analysis. */
 export const READ_TOOLS = {
   getFullResume,
   searchKnowledge,
   listKnowledgeFiles,
   recallFacts,
   listProjects,
+  getProjectDoc,
 };
 
-/** Write tools available ONLY to the admin agent. */
+/** Write tools (and admin-only helpers) available ONLY to the admin agent. */
 export const WRITE_TOOLS = {
   updateResumeSection,
   ingestFile,
   addGithubRepo,
   analyzeProject,
-  getProjectDoc,
   deleteProject,
   rememberFact,
   forgetFact,
