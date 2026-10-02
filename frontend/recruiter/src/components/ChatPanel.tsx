@@ -12,6 +12,7 @@ import { getSuggestedPrompts, type UiStrings } from '../lib/i18n';
 import { renderMarkdown } from '../lib/markdown';
 import { clockTime, cx } from '../lib/utils';
 import type { ChatMessage } from '../types/resume';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { ASK_EVENT } from './resume/Projects';
 import {
   AlertIcon,
@@ -135,6 +136,7 @@ export function ChatPanel({
   const composing = useRef(false);
 
   const busy = status === 'streaming';
+  useKeyboardInset();
   const prompts = useMemo(() => getSuggestedPrompts(lang), [lang]);
   const showWelcome = messages.length === 0;
 
@@ -360,7 +362,14 @@ export function ChatPanel({
       ) : null}
 
       {/* ── composer ─────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 shrink-0 border-t border-rule px-4 pt-3 pb-3 sm:px-5 sm:pb-4">
+      <footer
+        className="relative z-10 shrink-0 border-t border-rule px-4 pt-3 sm:px-5"
+        /* `--kb` = on-screen keyboard height (0 on desktop). Lifts the composer
+           above the mobile keyboard, which otherwise covers it. */
+        style={{
+          paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px) + var(--kb, 0px))",
+        }}
+      >
         <div className="mx-auto w-full max-w-[46rem]">
           <div className="composer">
             <textarea

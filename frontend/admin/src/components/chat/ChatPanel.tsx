@@ -7,6 +7,7 @@ import ArtifactPanel from "./ArtifactPanel";
 import { ErrorNote, EmptyState } from "../ui";
 import { useT } from "../../lib/i18n";
 import { useIsGuest } from "../../hooks/useIsGuest";
+import { useKeyboardInset } from "../../hooks/useKeyboardInset";
 import { IconChat, IconChevron, IconResume } from "../icons";
 
 interface SessionItem {
@@ -40,6 +41,7 @@ async function fetchTitle(id: string, emptyTitle: string, unreadable: string): P
 export default function ChatPanel() {
   const t = useT();
   const isGuest = useIsGuest();
+  useKeyboardInset();
   const {
     sessionId, messages, loadingHistory, streaming, error,
     send, stop, switchSession, newSession, setError,
@@ -339,7 +341,12 @@ export default function ChatPanel() {
           )}
         </div>
 
-        <div className="mt-3 flex items-end gap-2">
+        <div
+          className="mt-3 flex items-end gap-2"
+          /* `--kb` = on-screen keyboard height (0 on desktop). Lifts the
+             composer above the mobile keyboard, which otherwise covers it. */
+          style={{ paddingBottom: "calc(var(--kb, 0px))" }}
+        >
           <div className="flex-1">
             <ChatInput onSend={send} onAttach={handleAttach} busy={streaming} />
           </div>
