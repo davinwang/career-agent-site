@@ -206,7 +206,13 @@ export async function runAgentTurn(opts: RunAgentOptions): Promise<Observable<AG
     runId,
     messages: history,
     tools: [] as AgUiTool[],
-    context: [] as AgUiContext[],
+    context: [
+      {
+        description:
+          'The visitor chat session ID. Pass this as the sessionId argument when calling the list-visitor-attachments tool to read files the visitor uploaded (e.g. a job description).',
+        value: sessionId,
+      },
+    ] as AgUiContext[],
     forwardedProps: {},
   });
 

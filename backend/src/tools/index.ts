@@ -14,6 +14,7 @@ import { searchKnowledge, listKnowledgeFiles, ingestFile } from './knowledge.js'
 import { addGithubRepo, analyzeProject, getProjectDoc, listProjects, listGithubRepos, deleteProject } from './projects.js';
 import { rememberFact, recallFacts, forgetFact } from './memory.js';
 import { listSkills, createSkill, updateSkill, deleteSkill } from './skills.js';
+import { listVisitorAttachments } from './visitor.js';
 import { findLogo } from './logo.js';
 
 // Re-export individual tools for direct use if needed
@@ -34,6 +35,7 @@ export const READ_TOOLS = {
   recallFacts,
   listProjects,
   getProjectDoc,
+  listVisitorAttachments,
 };
 
 /** Write tools (and admin-only helpers) available ONLY to the admin agent. */
