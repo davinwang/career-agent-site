@@ -43,12 +43,15 @@ export const getFullResume = createTool({
 export const updateResumeSection = createTool({
   id: 'update-resume-section',
   description:
-    'Update a specific section of the resume. Sections: experience, projects, skills, education, summary, status, tags. Performs atomic read-modify-write.',
+    'Update a specific section of the resume. Sections: experience, projects, skills, education, summary, status, tags, recruiter_questions. Performs atomic read-modify-write.',
   inputSchema: z.object({
     lang: z.string().default('zh').describe('Language code: zh, en, etc.'),
     section: z
-      .enum(['experience', 'projects', 'skills', 'education', 'summary', 'status', 'tags', 'name', 'photo'])
-      .describe('Which resume section to update. "photo" takes a public URL path like /uploads/xxx.png'),
+      .enum(['experience', 'projects', 'skills', 'education', 'summary', 'status', 'tags', 'name', 'photo', 'recruiter_questions'])
+      .describe('Which resume section to update. "photo" takes a public URL path like /uploads/xxx.png. ' +
+      '"recruiter_questions" takes an array of {question_zh, question_en, needs_input} — dossier-wide questions ' +
+      'shown to visiting recruiters in the chat prompt strip (max 5 items, ≤40 chars per question_zh/question_en, ' +
+      'needs_input=false means answerable from the dossier alone).'),
     data: z.unknown().describe(
       'New data for the section (type depends on section). ' +
       'experience[] items accept: company, position, period, desc, achievements[], tech, ' +

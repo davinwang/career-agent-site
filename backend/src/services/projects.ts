@@ -739,7 +739,11 @@ ${gitHistoryStr}
 - 每个问题必须同时给出 question_zh（中文）和 question_en（英文），语义一致，两份都要自然地道，不要机翻腔。
 - needs_input=false：仅凭简历和源码就能直接回答的问题（如「这个项目的 QPS 峰值是多少」「为什么选 X 而不是 Y」）——猎头端可以一键直接向 AI 助手发送。
 - needs_input=true：需要候选人补充材料才能回答的问题（如「能提供压测报告吗」「有客户证言吗」）——猎头端只会把问题填入输入框，由猎头自行补充后发送。
-- content 3-5条，highlights 2-4条`;
+- **字数硬性限制（超出会被系统截断，请直接写到位）**：
+  - content 每条 ≤ 80 个字（中文字符计；英文按单词数 ×1.6 折算），共 3-4 条
+  - highlights 每条 ≤ 60 个字，共 2-4 条
+  - recruiter_questions 的 question_zh/question_en 每条 ≤ 40 个字，共 3-5 条；问题要短促有力，适合作为聊天气泡里的一键提问按钮
+  - role ≤ 30 个字`;
 }
 
 interface LlmResult {
@@ -793,6 +797,46 @@ async function callLlm(prompt: string): Promise<LlmResult> {
   }
 }
 
+/** Hard content limits — enforced post-parse so a runaway LLM can't overflow
+ *  the recruiter UI (details card / chat-prompt chips are sized for these). */
+export const PROJECT_LIMITS = {
+  contentItems: 4,
+  contentChars: 80,
+  highlightItems: 4,
+  highlightChars: 60,
+  questionItems: 5,
+  questionChars: 40,
+  roleChars: 30,
+} as const;
+
+function clampText(s: unknown, maxChars: number): string {
+  const text = typeof s === 'string' ? s.trim() : '';
+  return text.length > maxChars ? `${text.slice(0, maxChars - 1).trimEnd()}…` : text;
+}
+
+function enforceProjectLimits(rc: any): void {
+  if (Array.isArray(rc.content)) {
+    rc.content = rc.content
+      .slice(0, PROJECT_LIMITS.contentItems)
+      .map((c: unknown) => clampText(c, PROJECT_LIMITS.contentChars));
+  }
+  if (Array.isArray(rc.highlights)) {
+    rc.highlights = rc.highlights
+      .slice(0, PROJECT_LIMITS.highlightItems)
+      .map((h: unknown) => clampText(h, PROJECT_LIMITS.highlightChars));
+  }
+  if (Array.isArray(rc.recruiter_questions)) {
+    rc.recruiter_questions = rc.recruiter_questions
+      .slice(0, PROJECT_LIMITS.questionItems)
+      .map((q: any) => ({
+        ...q,
+        question_zh: clampText(q?.question_zh, PROJECT_LIMITS.questionChars),
+        question_en: clampText(q?.question_en, PROJECT_LIMITS.questionChars),
+      }));
+  }
+  rc.role = clampText(rc.role, PROJECT_LIMITS.roleChars);
+}
+
 function parseAnalysisResult(llmText: string, projectName: string): { doc: string; resumeContent: any } {
   const parts = llmText.split('===SEPARATOR===');
   const doc = (parts[0] || '').trim();
@@ -819,6 +863,8 @@ function parseAnalysisResult(llmText: string, projectName: string): { doc: strin
       resumeContent.content = [parts[1].trim().slice(0, 500)];
     }
   }
+
+  enforceProjectLimits(resumeContent);
 
   return { doc: doc || `# ${projectName}\n\n(Analysis pending)`, resumeContent };
 }

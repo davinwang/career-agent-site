@@ -302,6 +302,99 @@ export async function fetchProjectQuestions(): Promise<Record<string, RecruiterQ
 }
 
 /**
+ * `GET /api/resume/questions` — dossier-wide recruiter questions generated
+ * alongside the résumé by the admin agent (source 2 of the prompt strip).
+ * Best-effort: any failure yields [].
+ */
+export async function fetchResumeQuestions(): Promise<RecruiterQuestion[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/resume/questions`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return [];
+    const payload = await readJson<{ questions?: RecruiterQuestion[] }>(res);
+    return payload.questions ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Metadata of one visitor attachment (JD etc). */
+export interface VisitorAttachment {
+  id: string;
+  original_name: string;
+  ext: string;
+  size: number;
+  created_at: string;
+}
+
+/** `POST /api/attachment` — visitor uploads a JD / role description. */
+export async function uploadAttachment(
+  sessionId: string,
+  file: File,
+): Promise<{ ok: true; attachment: VisitorAttachment } | { ok: false; error: string }> {
+  try {
+    const body = new FormData();
+    body.append('file', file);
+    body.append('session_id', sessionId);
+    const res = await fetch(`${API_BASE}/api/attachment`, { method: 'POST', body });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: payload?.error ?? `upload failed (${res.status})` };
+    }
+    return {
+      ok: true,
+      attachment: {
+        id: payload.id,
+        original_name: payload.original_name,
+        ext: payload.extension ?? '',
+        size: payload.size,
+        created_at: payload.uploaded_at,
+      },
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'upload failed' };
+  }
+}
+
+/** `GET /api/attachment?session_id=…` — list this session's attachments. */
+export async function fetchAttachments(sessionId: string): Promise<VisitorAttachment[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/attachment?session_id=${encodeURIComponent(sessionId)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return [];
+    const payload = await readJson<{ attachments?: VisitorAttachment[] }>(res);
+    return payload.attachments ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** A behaviour skill shown transparently to recruiters. */
+export interface RecruiterSkill {
+  id: string;
+  name: string;
+  prompt: string;
+  lang: string;
+}
+
+/** `GET /api/public/skills?lang=zh|en` — enabled skill names for transparency. */
+export async function fetchRecruiterSkills(lang: string): Promise<RecruiterSkill[]> {
+  try {
+    const prefix = lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    const res = await fetch(`${API_BASE}/api/public/skills?lang=${prefix}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return [];
+    const payload = await readJson<{ skills?: RecruiterSkill[] }>(res);
+    return payload.skills ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Register the anonymous session so message history can be persisted.
  * A 409 just means "already known" and is not an error.
  */

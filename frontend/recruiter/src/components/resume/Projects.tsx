@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { UiStrings } from '../../lib/i18n';
-import { fetchProjectQuestions, type RecruiterQuestion } from '../../lib/api';
 import type { ResumeProject } from '../../types/resume';
-import { ArrowUpRight, ChatIcon, ChevronDown, GithubIcon, LayersIcon, LinkIcon } from '../Icons';
+import { ArrowUpRight, ChatIcon, GithubIcon, LayersIcon, LinkIcon } from '../Icons';
 import Reveal from '../Reveal';
 import SectionHead from './SectionHead';
 
@@ -15,30 +14,18 @@ interface Props {
 /** Ask-event name shared with ChatPanel (see ChatPanel listener). */
 export const ASK_EVENT = 'recruiter:ask';
 
+/** Focus-event name: ChatPanel shows per-project question prompts on it. */
+export const FOCUS_EVENT = 'recruiter:project-focus';
+
 /**
- * Selected projects as dossier cards. The long write-up (scope bullets +
- * impact highlights) is COLLAPSED by default; the AI-generated recruiter
- * questions are EXPANDED by default so a skimming recruiter's eye lands on
- * the interactive prompts first.
+ * Selected projects as dossier cards. The write-up (scope bullets + impact
+ * highlights) is always expanded — the card IS the details. Per-project
+ * recruiter questions live in the chat panel: when a card gains focus
+ * (hover, keyboard focus, or scrolled into view), the panel surfaces that
+ * project's questions above the composer.
  */
 export function Projects({ items, lang, t }: Props) {
   const isZh = lang.toLowerCase().startsWith('zh');
-  const [questions, setQuestions] = useState<Record<string, RecruiterQuestion[]>>({});
-
-  // Best-effort fetch: no questions on failure — cards render without prompts.
-  useEffect(() => {
-    let active = true;
-    fetchProjectQuestions().then((q) => {
-      if (active) setQuestions(q);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const ask = (text: string, direct: boolean) => {
-    window.dispatchEvent(new CustomEvent(ASK_EVENT, { detail: { text, direct } }));
-  };
 
   return (
     <Reveal className="scroll-mt-6" id="projects">
@@ -59,17 +46,8 @@ export function Projects({ items, lang, t }: Props) {
               key={`${project.name}-${i}`}
               index={i}
               project={project}
-              // Repo names are shorter than résumé project titles ("career-agent-site"
-              // vs "career-agent-site — Career Mentor Agent"), so match by prefix
-              // in either direction.
-              questions={
-                Object.entries(questions).find(
-                  ([k]) => project.name.startsWith(k) || k.startsWith(project.name),
-                )?.[1] ?? []
-              }
               isZh={isZh}
               t={t}
-              onAsk={ask}
             />
           ))}
         </div>
@@ -81,24 +59,54 @@ export function Projects({ items, lang, t }: Props) {
 function ProjectCard({
   index,
   project,
-  questions,
-  isZh,
+  isZh: _isZh,
   t,
-  onAsk,
 }: {
   index: number;
   project: ResumeProject;
-  questions: RecruiterQuestion[];
   isZh: boolean;
   t: UiStrings;
-  onAsk: (text: string, direct: boolean) => void;
 }) {
-  // Details collapsed by default; the question section (below) is the open part.
-  const [expanded, setExpanded] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+
+  // Focus tracking: hover / keyboard focus / scrolled ≥50% into view all
+  // dispatch a focus event so the chat panel swaps in this project's prompts.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            window.dispatchEvent(
+              new CustomEvent(FOCUS_EVENT, { detail: { projectName: project.name } }),
+            );
+            break;
+          }
+        }
+      },
+      { threshold: 0.5 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [project.name]);
+
+  const onEnter = () => {
+    window.dispatchEvent(
+      new CustomEvent(FOCUS_EVENT, { detail: { projectName: project.name } }),
+    );
+  };
+
   const hasDetails = project.content.length > 0 || project.highlights.length > 0;
 
   return (
-    <article className="dossier-card p-5 sm:p-6">
+    <article
+      ref={ref}
+      className="dossier-card p-5 sm:p-6"
+      onMouseEnter={onEnter}
+      onFocus={onEnter}
+      tabIndex={-1}
+    >
       {/* meta row ------------------------------------------------ */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="sys-num">P-{String(index + 1).padStart(2, '0')}</span>
@@ -133,91 +141,35 @@ function ProjectCard({
         </div>
       )}
 
-      {/* questions (open by default) ----------------------------- */}
-      {questions.length > 0 && (
-        <div className="mt-4">
-          <p className="sys-label mb-2.5 flex items-center gap-2 text-accent">
-            <ChatIcon className="h-3.5 w-3.5" aria-hidden />
-            {t.projects.askTitle}
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {questions.map((q, qi) => {
-              const text = isZh ? q.question_zh : q.question_en;
-              return (
-                <button
-                  key={qi}
-                  type="button"
-                  onClick={() => onAsk(text, !q.needs_input)}
-                  className="group flex w-full items-start gap-2.5 border border-rule bg-raised/60 px-3 py-2 text-left transition-colors duration-150 hover:border-accent/60"
-                  title={q.needs_input ? t.projects.askHint : t.projects.askDirect}
-                >
-                  <span
-                    className={[
-                      'mt-[2px] shrink-0 border px-1 py-[1px] font-mono text-[8.5px] tracking-[0.14em] uppercase',
-                      q.needs_input
-                        ? 'border-gold/55 bg-goldsoft text-gold'
-                        : 'border-teal/45 bg-tealsoft text-teal',
-                    ].join(' ')}
-                  >
-                    {q.needs_input ? t.projects.askPrefill : t.projects.askDirect}
-                  </span>
-                  <span className="min-w-0 flex-1 text-[13px] leading-[1.7] text-soft group-hover:text-ink">
-                    {text}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* collapsible details ------------------------------------- */}
+      {/* details — always expanded, the card IS the details ------- */}
       {hasDetails && (
-        <div className="mt-4 border-t border-hair pt-3">
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            className="sys-label flex w-full items-center gap-2 bg-transparent p-0 text-left text-mute transition-colors duration-150 hover:text-accent"
-          >
-            <ChevronDown
-              className="h-3.5 w-3.5 shrink-0 transition-transform duration-200"
-              style={{ transform: expanded ? 'rotate(180deg)' : 'none' }}
-              aria-hidden
-            />
-            {t.projects.detailsTitle}
-          </button>
+        <div className="mt-4">
+          {project.content.length > 0 && (
+            <ul className="marker-list space-y-2">
+              {project.content.map((c, ci) => (
+                <li key={ci} className="text-[13.5px] leading-[1.85] text-soft">
+                  {c}
+                </li>
+              ))}
+            </ul>
+          )}
 
-          {expanded && (
-            <div>
-              {project.content.length > 0 && (
-                <ul className="marker-list mt-4 space-y-2">
-                  {project.content.map((c, ci) => (
-                    <li key={ci} className="text-[13.5px] leading-[1.85] text-soft">
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {project.highlights.length > 0 && (
-                <div className="mt-4">
-                  <p className="sys-label mb-2.5 flex items-center gap-2 text-accent">
-                    <span aria-hidden>▸</span>
-                    {t.resume.highlights}
-                  </p>
-                  <ul className="m-0 list-none space-y-2 p-0">
-                    {project.highlights.map((h, hi) => (
-                      <li
-                        key={hi}
-                        className="relative border-l-2 border-accent/55 bg-accentsoft/45 py-1.5 pr-3 pl-3 text-[13.5px] leading-[1.8] font-medium text-ink"
-                      >
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {project.highlights.length > 0 && (
+            <div className="mt-4">
+              <p className="sys-label mb-2.5 flex items-center gap-2 text-accent">
+                <ChatIcon className="h-3.5 w-3.5" aria-hidden />
+                {t.resume.highlights}
+              </p>
+              <ul className="m-0 list-none space-y-2 p-0">
+                {project.highlights.map((h, hi) => (
+                  <li
+                    key={hi}
+                    className="relative border-l-2 border-accent/55 bg-accentsoft/45 py-1.5 pr-3 pl-3 text-[13.5px] leading-[1.8] font-medium text-ink"
+                  >
+                    {h}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

@@ -45,6 +45,10 @@ export interface UiStrings {
     detailsHint: string;
     askDirect: string;
     askPrefill: string;
+    dossierAskTitle: string;
+    tryAskTitle: string;
+    skillsTitle: string;
+    skillsHint: string;
   };
   chat: {
     title: string;
@@ -59,6 +63,26 @@ export interface UiStrings {
     send: string;
     stop: string;
     clear: string;
+    viewPrompts: string;
+    visitAdmin: string;
+    attach: string;
+    attachDone: string;
+    attachFail: string;
+    reference: string;
+    referenceTitle: string;
+    noAttachments: string;
+    refSnippet: string;
+    refTitle: string;
+    refGroupResume: string;
+    refGroupAttach: string;
+    refSummary: string;
+    refExperience: string;
+    refProject: string;
+    refEducation: string;
+    refSkills: string;
+    refEmpty: string;
+    promptsEmpty: string;
+    promptsNote: string;
     clearConfirm: string;
     thinking: string;
     streaming: string;
@@ -127,6 +151,10 @@ const zh: UiStrings = {
     detailsHint: '点击展开完整介绍',
     askDirect: '直接问',
     askPrefill: '需补充',
+    dossierAskTitle: '候选人画像',
+    tryAskTitle: '可以这样问',
+    skillsTitle: '行为技能',
+    skillsHint: '这些技能正在引导 AI 助手的回答方式（随语言切换）',
   },
   chat: {
     title: 'AI 招聘助手',
@@ -141,6 +169,26 @@ const zh: UiStrings = {
     send: '发送',
     stop: '停止',
     clear: '新会话',
+    viewPrompts: '查看提示词',
+    visitAdmin: '管理员入口',
+    attach: '上传附件（JD 等）',
+    attachDone: '已上传',
+    attachFail: '上传失败',
+    refTitle: '引用简历内容或附件',
+    refGroupResume: '简历',
+    refGroupAttach: '附件',
+    refSummary: '个人概述',
+    refExperience: '工作',
+    refProject: '项目',
+    refEducation: '教育',
+    refSkills: '技能',
+    refEmpty: '暂无可引用的内容',
+    reference: '引用简历内容或附件',
+    referenceTitle: '引用本次会话已上传的附件',
+    noAttachments: '还没有上传过附件',
+    refSnippet: '[@附件：{name}]',
+    promptsEmpty: '当前语言暂无启用的技能',
+    promptsNote: '这些技能正在引导 AI 助手的回答方式（随语言切换）',
     clearConfirm: '开启新会话将清空当前对话记录，确定继续？',
     thinking: '正在思考',
     streaming: '正在回复',
@@ -148,8 +196,8 @@ const zh: UiStrings = {
     welcomeBody:
       '左侧是完整简历。你可以直接向我提问关于工作经历、项目细节、技术栈深度或求职意向的任何问题——我会基于候选人的真实档案与代码库作答。',
     suggested: '试试问我',
-    you: '你',
-    agent: 'AI 助手',
+    you: 'ME',
+    agent: 'AI AGENT',
     errorTitle: '消息发送失败',
     errorBody: '无法连接到 AI 服务，请稍后重试。',
     retry: '重试',
@@ -207,9 +255,13 @@ const en: UiStrings = {
     askTitle: 'Ask the AI agent',
     askHint: 'Click a question to get an answer right away; ones marked "needs input" are placed in the composer for you to attach material first',
     detailsTitle: 'Project details',
-    detailsHint: 'Click to expand the full write-up',
+    detailsHint: 'Click to expand the full introduction',
     askDirect: 'Ask',
-    askPrefill: 'Needs input',
+    askPrefill: 'Add info',
+    dossierAskTitle: 'Candidate profile',
+    tryAskTitle: 'Try asking',
+    skillsTitle: 'Behavior skills',
+    skillsHint: 'These skills are currently steering the AI agent (switch with language)',
   },
   chat: {
     title: 'Recruiting Agent',
@@ -224,6 +276,26 @@ const en: UiStrings = {
     send: 'Send',
     stop: 'Stop',
     clear: 'New thread',
+    viewPrompts: 'View prompts',
+    visitAdmin: 'Admin console',
+    attach: 'Upload attachment (JD etc.)',
+    attachDone: 'uploaded',
+    attachFail: 'Upload failed',
+    refTitle: 'Reference résumé content or attachments',
+    refGroupResume: 'Résumé',
+    refGroupAttach: 'Attachments',
+    refSummary: 'Profile summary',
+    refExperience: 'Work',
+    refProject: 'Project',
+    refEducation: 'Education',
+    refSkills: 'Skills',
+    refEmpty: 'Nothing to reference yet',
+    reference: 'Reference résumé content or attachments',
+    referenceTitle: 'Attachments uploaded in this session',
+    noAttachments: 'No attachments uploaded yet',
+    refSnippet: '[@Attachment: {name}]',
+    promptsEmpty: 'No skills enabled for this language yet',
+    promptsNote: 'These skills are steering the AI agent (switch with language)',
     clearConfirm: 'Starting a new thread clears this conversation. Continue?',
     thinking: 'Thinking',
     streaming: 'Replying',
@@ -231,8 +303,8 @@ const en: UiStrings = {
     welcomeBody:
       'The full dossier is on the left. Ask me anything about work history, project specifics, technical depth or availability — I answer from the candidate’s real résumé and repositories.',
     suggested: 'Try asking',
-    you: 'You',
-    agent: 'Agent',
+    you: 'ME',
+    agent: 'AI AGENT',
     errorTitle: 'Message failed',
     errorBody: 'Could not reach the AI service. Please try again.',
     retry: 'Retry',
