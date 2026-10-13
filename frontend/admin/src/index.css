@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Alibaba PuHuiTi — self-hosted, subset (Latin + CJK), free license. */
+@font-face {
+  font-family: "Alibaba PuHuiTi";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/admin/fonts/AlibabaPuHuiTi-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Alibaba PuHuiTi";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("/admin/fonts/AlibabaPuHuiTi-Bold.woff2") format("woff2");
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ *
@@ -7,9 +23,9 @@
  * Warm paper / espresso-ink surfaces, ember accent, hairline rules.
  * ------------------------------------------------------------------ */
 @theme {
-  --font-display: "Fraunces", "Noto Sans SC", ui-serif, Georgia, serif;
-  --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
-  --font-sans: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Alibaba PuHuiTi", ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-sans: "Alibaba PuHuiTi", ui-sans-serif, system-ui, sans-serif;
 
   /* paper (light) */
   --color-paper-50: #faf7f0;
@@ -286,7 +302,7 @@ body::before {
 [data-skin='modern'] .font-display,
 [data-skin='modern'] h1,
 [data-skin='modern'] h2 {
-  font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Alibaba PuHuiTi", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ---- SKIN: emerald — ivory paper, emerald accent, serif display ---- */
@@ -314,5 +330,5 @@ body::before {
 [data-skin='emerald'] .font-display,
 [data-skin='emerald'] h1,
 [data-skin='emerald'] h2 {
-  font-family: "Noto Serif SC", "Fraunces", ui-serif, Georgia, serif;
+  font-family: "Alibaba PuHuiTi", ui-serif, Georgia, serif;
 }

@@ -1,5 +1,21 @@
 @import 'tailwindcss';
 
+/* Alibaba PuHuiTi — self-hosted, subset (Latin + CJK), free license. */
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/AlibabaPuHuiTi-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url('/fonts/AlibabaPuHuiTi-Bold.woff2') format('woff2');
+}
+
 /* Class-based dark mode (Tailwind v4 defaults to the media query). */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -72,9 +88,9 @@
 }
 
 @theme inline {
-  --font-display: 'Fraunces', 'Noto Serif SC', ui-serif, Georgia, serif;
-  --font-sans: 'Manrope', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: 'Alibaba PuHuiTi', ui-serif, Georgia, serif;
+  --font-sans: 'Alibaba PuHuiTi', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-paper: var(--c-paper);
   --color-surface: var(--c-surface);
@@ -1108,7 +1124,7 @@
   --shadow-strength: 0.06;
   --grain-opacity: 0;
 
-  --font-display: 'Manrope', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Alibaba PuHuiTi', ui-sans-serif, system-ui, sans-serif;
 }
 .dark[data-skin='modern'],
 [data-skin='modern'].dark {
@@ -1214,7 +1230,7 @@
 
 /* Emerald: serif display, squared corners, straight (un-rotated) markers */
 [data-skin='emerald'] {
-  --font-display: 'Noto Serif SC', 'Fraunces', ui-serif, Georgia, serif;
+  --font-display: 'Alibaba PuHuiTi', ui-serif, Georgia, serif;
 }
 [data-skin='emerald'] .dossier-card,
 [data-skin='emerald'] .chip,
