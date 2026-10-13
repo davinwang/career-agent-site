@@ -47,6 +47,8 @@ export default function LangSwitch() {
           display: "inline-grid",
           gridAutoFlow: "column",
           gridAutoColumns: "1fr",
+          height: 36,
+          alignItems: "center",
           border: "1px solid var(--rule)",
           borderRadius: 3,
           padding: 2,
