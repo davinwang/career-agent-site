@@ -60,7 +60,7 @@ function DownloadMenu({ languages, t }: { languages: string[]; t: UiStrings }) {
     <div ref={wrapRef} className="relative">
       <button
         type="button"
-        className="seg__btn flex items-center gap-1 rounded-full border border-rule px-2.5 py-1 font-mono text-[10px] tracking-wider text-soft"
+        className="icon-btn group h-8 w-auto gap-1 px-2.5 font-mono text-[10px] tracking-wider"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.masthead.downloadPdf}

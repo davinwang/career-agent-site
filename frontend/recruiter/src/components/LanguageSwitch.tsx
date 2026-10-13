@@ -32,7 +32,7 @@ export function LanguageSwitch({ languages, value, onChange, t }: Props) {
 
   return (
     <div
-      className="seg"
+      className="seg h-8 items-center"
       role="group"
       aria-label={t.a11y.language}
       style={
