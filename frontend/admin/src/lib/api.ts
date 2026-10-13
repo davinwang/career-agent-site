@@ -10,6 +10,7 @@ import type {
   ProjectDoc,
 } from "../types/api";
 import type { ResumeData } from "../types/resume";
+import type { SessionSide } from "../types/api";
 import { t as i18nT } from "./i18n";
 
 /** A GitHub repo as returned by the official /user/repos endpoint. */
@@ -204,7 +205,7 @@ const api = {
     return request(`/api/sessions/current?side=admin`, { method: "POST" });
   },
   /** Own admin sessions, newest first (for the in-chat session switcher). */
-  listAdminSessions(): Promise<{ sessions: Array<{ id: string; side: string; created_at: string; updated_at: string; metadata: string | null }> }> {
+  listAdminSessions(): Promise<{ sessions: Array<{ id: string; side: SessionSide; created_at: string; updated_at: string; metadata: string | null }> }> {
     return request(`/api/sessions?side=admin`);
   },
 

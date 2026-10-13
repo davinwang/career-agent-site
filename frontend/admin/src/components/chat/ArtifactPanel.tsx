@@ -22,7 +22,7 @@ interface Artifacts {
   resumes: { lang: string; name: string | null; photo: string | null }[];
   knowledge: { id: string; filename: string; source_type: string; created_at: string; excerpt: string }[];
   projects: { id: string; name: string; repo_url: string | null; status: string; created_at: string; has_doc: number }[];
-  skills: { id: string; name: string; prompt: string; enabled: boolean; priority: number }[];
+  skills: { id: string; name: string; prompt: string; lang: string; enabled: boolean; priority: number }[];
   uploads?: UploadOriginal[];
 }
 
@@ -143,7 +143,7 @@ export default function ArtifactPanel({
             <button
               key={cell.kind}
               type="button"
-              onClick={() => setOpenKind(cell.kind)}
+              onClick={() => setOpenKind((k) => (k === cell.kind ? null : cell.kind))}
               className="rise group flex flex-col items-center justify-center gap-1 rounded-lg border p-2 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--accent)]"
               style={{
                 borderColor: openKind === cell.kind ? "var(--accent)" : "var(--rule)",
@@ -262,12 +262,14 @@ function Detail({
         />
       ) : kind === "skills" ? (
         <ListDetail
-          items={data.skills.map((s) => ({
-            id: s.id,
-            title: s.name,
-            sub: s.prompt.slice(0, 60) + (s.prompt.length > 60 ? "…" : ""),
-            badge: s.enabled ? "on" : "off",
-          }))}
+          items={data.skills
+            .filter((s) => (s.lang === "en") === (t.lang === "en"))
+            .map((s) => ({
+              id: s.id,
+              title: s.name,
+              sub: s.prompt.slice(0, 60) + (s.prompt.length > 60 ? "…" : ""),
+              badge: `${s.lang === "en" ? "EN" : "中文"} · ${s.enabled ? "on" : "off"}`,
+            }))}
           empty={t("artifacts.emptySkills")}
           askText={t("artifacts.askSkills")}
         />

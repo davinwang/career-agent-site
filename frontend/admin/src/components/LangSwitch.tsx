@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useI18n, useT } from "../lib/i18n";
 import type { UiLang } from "../lib/i18n";
 
 /**
  * Segmented 中/EN switch with a sliding thumb — mirrors the recruiter
- * portal's LanguageSwitch, including the compact mobile labels
- * (中文→中, English→EN below 640px).
+ * portal's LanguageSwitch: equal-width CSS grid, thumb positioned purely
+ * from custom properties (no JS measuring, so it can never drift out of
+ * sync with the pressed state), compact labels below 640px.
  */
 
 const LABELS: Record<UiLang, string> = { zh: "中文", en: "English" };
@@ -32,46 +33,28 @@ export default function LangSwitch() {
   const { lang, setLanguage } = useI18n();
   const isCompact = !useMediaQuery("(min-width: 640px)");
 
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const btnRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const [thumb, setThumb] = useState({ left: 2, width: 0 });
-
   const items: UiLang[] = ["zh", "en"];
+  const activeIndex = Math.max(0, items.indexOf(lang as UiLang));
   const labelFor = (l: UiLang) => (isCompact ? LABELS_SHORT[l] : LABELS[l]);
-
-  const measure = () => {
-    const wrap = wrapRef.current;
-    const active = btnRefs.current[items.indexOf(lang)];
-    if (!wrap || !active) return;
-    const wrapBox = wrap.getBoundingClientRect();
-    const box = active.getBoundingClientRect();
-    setThumb({ left: box.left - wrapBox.left, width: box.width });
-  };
-
-  useLayoutEffect(measure, [lang, isCompact]);
-
-  useEffect(() => {
-    if (typeof document.fonts?.ready?.then === "function") {
-      document.fonts.ready.then(measure).catch(() => undefined);
-    }
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div
-      ref={wrapRef}
       role="group"
       aria-label={t("a11y.uiLanguage")}
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        border: "1px solid var(--rule)",
-        borderRadius: 3,
-        padding: 2,
-        background: "var(--surface)",
-      }}
+      style={
+        {
+          position: "relative",
+          display: "inline-grid",
+          gridAutoFlow: "column",
+          gridAutoColumns: "1fr",
+          border: "1px solid var(--rule)",
+          borderRadius: 3,
+          padding: 2,
+          background: "var(--surface)",
+          "--seg-count": items.length,
+          "--seg-index": activeIndex,
+        } as CSSProperties
+      }
     >
       <span
         aria-hidden
@@ -79,20 +62,18 @@ export default function LangSwitch() {
           position: "absolute",
           top: 2,
           bottom: 2,
-          left: thumb.left,
-          width: thumb.width,
+          left: 2,
+          width: "calc((100% - 4px) / var(--seg-count, 2))",
+          transform: "translateX(calc(var(--seg-index, 0) * 100%))",
           background: "var(--accent)",
           borderRadius: 2,
-          transition: "left 0.34s cubic-bezier(0.16,1,0.3,1), width 0.34s cubic-bezier(0.16,1,0.3,1)",
+          transition: "transform 0.34s cubic-bezier(0.16,1,0.3,1)",
           zIndex: 0,
         }}
       />
-      {items.map((l, i) => (
+      {items.map((l) => (
         <button
           key={l}
-          ref={(el) => {
-            btnRefs.current[i] = el;
-          }}
           type="button"
           aria-pressed={lang === l}
           onClick={() => setLanguage(l)}
@@ -110,7 +91,7 @@ export default function LangSwitch() {
             whiteSpace: "nowrap",
             cursor: "pointer",
             transition: "color 0.24s ease",
-            color: lang === l ? "var(--accent)" : "var(--text-muted)",
+            color: lang === l ? "var(--color-paper-50, #fff)" : "var(--text-muted)",
           }}
         >
           {labelFor(l)}

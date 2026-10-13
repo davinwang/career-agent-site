@@ -69,6 +69,11 @@ CREATE TABLE IF NOT EXISTS skills (
 );
 `;
 
+/** Migration: per-language skills (legacy rows → 'zh'). Idempotent. */
+export const SQL_MIGRATE_SKILLS_LANG = `
+ALTER TABLE skills ADD COLUMN lang TEXT NOT NULL DEFAULT 'zh';
+`;
+
 export const SQL_CREATE_UPLOADS = `
 CREATE TABLE IF NOT EXISTS uploads (
   id TEXT PRIMARY KEY,
@@ -76,6 +81,18 @@ CREATE TABLE IF NOT EXISTS uploads (
   original_name TEXT NOT NULL,
   ext TEXT NOT NULL,
   size INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
+`;
+
+export const SQL_CREATE_VISITOR_UPLOADS = `
+CREATE TABLE IF NOT EXISTS visitor_uploads (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  ext TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  text TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 `;
@@ -103,11 +120,13 @@ CREATE TABLE IF NOT EXISTS admin_credentials (
 );
 `;
 
-/** Indexes that speed up the most common query patterns. */
+/** Indexes created after tables (and migrations) are in place. */
 export const SQL_CREATE_INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_side ON sessions(side);`,
   `CREATE INDEX IF NOT EXISTS idx_skills_enabled_priority ON skills(enabled, priority);`,
+  `CREATE INDEX IF NOT EXISTS idx_skills_lang_enabled ON skills(lang, enabled);`,
+  `CREATE INDEX IF NOT EXISTS idx_visitor_uploads_session ON visitor_uploads(session_id);`,
 ];
 
 /** All table DDL statements, in dependency order (parents before children). */
@@ -119,8 +138,11 @@ export const SCHEMA_STATEMENTS: string[] = [
   SQL_CREATE_PROJECTS,
   SQL_CREATE_SKILLS,
   SQL_CREATE_UPLOADS,
+  SQL_CREATE_VISITOR_UPLOADS,
   SQL_CREATE_FACTS,
   SQL_CREATE_SETTINGS,
   SQL_CREATE_ADMIN_CREDENTIALS,
+  // Migrations: only used by ensureSchema (which swallows "duplicate column").
+  SQL_MIGRATE_SKILLS_LANG,
   ...SQL_CREATE_INDEXES,
 ];

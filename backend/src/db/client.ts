@@ -29,7 +29,14 @@ export async function initDb(): Promise<Client> {
     // Enforce referential integrity (OFF by default in SQLite).
     await db.execute('PRAGMA foreign_keys = ON;');
     for (const statement of SCHEMA_STATEMENTS) {
-      await db.execute(statement);
+      try {
+        await db.execute(statement);
+      } catch (err: any) {
+        // Migrations (ALTER TABLE ADD COLUMN) fail with "duplicate column"
+        // when already applied — that's the idempotent success path.
+        if (/duplicate column/i.test(err?.message ?? '')) continue;
+        throw err;
+      }
     }
     client = db;
     return db;

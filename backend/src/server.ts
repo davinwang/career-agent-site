@@ -14,6 +14,7 @@ import { authRoutes, authRequired, adminRequired, readAllowed, verifyToken, isAd
 import { resumeRoutes } from './api/resume.js';
 import { sessionRoutes } from './api/sessions.js';
 import { uploadRoutes } from './api/upload.js';
+import { attachmentRoutes } from './api/attachment.js';
 import { skillRoutes } from './api/skills.js';
 import { knowledgeRoutes } from './api/knowledge.js';
 import { projectRoutes } from './api/projects.js';
@@ -50,7 +51,35 @@ app.route('/api/auth', authRoutes);
 app.route('/api/resume', resumeRoutes);
 app.route('/api/sessions', sessionRoutes);
 app.route('/api/upload', uploadRoutes);
+app.route('/api/attachment', attachmentRoutes);
 app.route('/api/skills', skillRoutes);
+
+// Public skills list for the recruiter transparency strip: enabled only,
+// filtered by language (?lang=zh|en). Name + full prompt text (transparent
+// by design — recruiters see exactly how the agent behaves).
+app.get('/api/public/skills', async (c) => {
+  const lang = (c.req.query('lang') ?? 'zh').toLowerCase();
+  const prefix = lang.startsWith('zh') ? 'zh' : 'en';
+  try {
+    const rows = await all<{ id: string; name: string; prompt: string; lang: string }>(
+      'SELECT id, name, prompt, lang FROM skills WHERE enabled = 1 ORDER BY priority DESC, created_at ASC',
+    );
+    const skills = rows
+      .map((r) => ({ id: r.id, name: r.name, prompt: r.prompt, lang: r.lang ?? 'zh' }))
+      .filter((r) => r.lang.toLowerCase().startsWith(prefix));
+    return c.json({ skills });
+  } catch {
+    return c.json({ skills: [] });
+  }
+});
+
+/**
+ * Public site config for the recruiter portal: only non-sensitive feature
+ * flags. Currently just whether guest (read-only admin) mode is enabled so
+ * the frontend can show/hide the "visit admin console" invitation link.
+ */
+app.get('/api/public/config', (c) => c.json({ guestMode: config.guestMode }));
+
 app.route('/api/knowledge', knowledgeRoutes);
 app.route('/api/projects', projectRoutes);
 app.route('/api/settings', settingsRoutes);
@@ -70,8 +99,8 @@ app.get('/api/artifacts', readAllowed, async (c) => {
               CASE WHEN p.doc IS NULL OR p.doc = '' THEN 0 ELSE 1 END AS has_doc
        FROM projects p ORDER BY p.created_at DESC`,
     ),
-    all<{ id: string; name: string; prompt: string; enabled: number; priority: number }>(
-      'SELECT id, name, prompt, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
+    all<{ id: string; name: string; prompt: string; lang: string; enabled: number; priority: number }>(
+      'SELECT id, name, prompt, lang, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
     ),
     all<{ id: string; stored_name: string; original_name: string; ext: string; size: number; created_at: string }>(
       'SELECT id, stored_name, original_name, ext, size, created_at FROM uploads ORDER BY created_at DESC',
@@ -263,6 +292,14 @@ app.notFound((c) => c.json({ error: 'Not Found' }, 404));
 // --- Bootstrap & graceful shutdown -------------------------------------------
 async function main(): Promise<void> {
   await initDb();
+  // System-skill seed: ensure zh skills have en pairs (idempotent, runs once
+  // per boot; inserts only missing pairs).
+  try {
+    const { seedSkillPairs } = await import('./db/seedSkills.js');
+    await seedSkillPairs();
+  } catch (err) {
+    console.warn('[seed] skill pair seeding skipped:', err);
+  }
   console.log('[server] database initialized');
 
   // Warm up the Mastra instance (agents + storage) in the background; a failure

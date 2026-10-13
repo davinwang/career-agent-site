@@ -49,6 +49,7 @@ export interface Skill {
   id: string;
   name: string;
   prompt: string;
+  lang: string;
   enabled: boolean | number;
   priority: number;
   created_at: string;

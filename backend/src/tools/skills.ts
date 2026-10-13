@@ -7,6 +7,7 @@ interface SkillRow {
   id: string;
   name: string;
   prompt: string;
+  lang: string;
   enabled: number;
   priority: number;
 }
@@ -24,7 +25,7 @@ export const listSkills = createTool({
   execute: async () => {
     try {
       const rows = await all<SkillRow>(
-        'SELECT id, name, prompt, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
+        'SELECT id, name, prompt, lang, enabled, priority FROM skills ORDER BY priority DESC, created_at ASC',
       );
       return { skills: rows.map((r) => ({ ...r, enabled: !!r.enabled })) };
     } catch (err: any) {
@@ -43,17 +44,21 @@ export const createSkill = createTool({
   inputSchema: z.object({
     name: z.string().min(1).describe('Short skill name, e.g. 外企求职辅导'),
     prompt: z.string().min(1).describe('The prompt fragment content'),
+    lang: z
+      .enum(['zh', 'en'])
+      .default('zh')
+      .describe('Which visitor language this skill applies to. Create a paired version in the other language when the content matters for both.'),
     priority: z.number().int().default(0).describe('Higher priority sorts first'),
   }),
   execute: async (context) => {
     try {
-      const { name, prompt, priority = 0 } = context;
+      const { name, prompt, lang = 'zh', priority = 0 } = context;
       const id = uuidv4();
       await run(
-        'INSERT INTO skills (id, name, prompt, enabled, priority, created_at) VALUES (?, ?, ?, 1, ?, ?)',
-        [id, name, prompt, priority, new Date().toISOString()],
+        'INSERT INTO skills (id, name, prompt, lang, enabled, priority, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+        [id, name, prompt, lang, priority, new Date().toISOString()],
       );
-      return { ok: true, id, name, enabled: true, priority };
+      return { ok: true, id, name, lang, enabled: true, priority };
     } catch (err: any) {
       return { error: `Failed to create skill: ${err.message}` };
     }
@@ -71,12 +76,13 @@ export const updateSkill = createTool({
     id: z.string().describe('Skill id from listSkills'),
     name: z.string().min(1).optional(),
     prompt: z.string().min(1).optional(),
+    lang: z.enum(['zh', 'en']).optional().describe('Visitor language this skill applies to'),
     enabled: z.boolean().optional(),
     priority: z.number().int().optional(),
   }),
   execute: async (context) => {
     try {
-      const { id, name, prompt, enabled, priority } = context;
+      const { id, name, prompt, lang, enabled, priority } = context;
       const existing = await get<SkillRow>('SELECT id FROM skills WHERE id = ?', [id]);
       if (!existing) {
         return { error: `Skill not found: ${id}` };
@@ -91,6 +97,10 @@ export const updateSkill = createTool({
       if (prompt !== undefined) {
         sets.push('prompt = ?');
         params.push(prompt);
+      }
+      if (lang !== undefined) {
+        sets.push('lang = ?');
+        params.push(lang);
       }
       if (enabled !== undefined) {
         sets.push('enabled = ?');

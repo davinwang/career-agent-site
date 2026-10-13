@@ -1,7 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { MastraMemory } from '@mastra/core/memory';
 import { RECRUITER_SYSTEM_PROMPT } from '../../prompts/system.js';
-import { composeInstructions } from '../../prompts/skills.js';
+import { composeInstructions, loadSkillsPrompt } from '../../prompts/skills.js';
 import { recruiterTools } from '../../tools/index.js';
 import { llmModelConfig } from '../model.js';
 
@@ -14,7 +14,25 @@ import { llmModelConfig } from '../model.js';
  * candidate can tune recruiter behaviour without a redeploy.
  */
 export async function createRecruiterAgent(memory?: MastraMemory) {
-  const instructions = await composeInstructions(RECRUITER_SYSTEM_PROMPT);
+  // Skills are per-language: inject both language variants tagged with their
+  // language, and instruct the agent to follow the one matching the visitor's
+  // language. This keeps a single agent instance while respecting language.
+  const [zhSkills, enSkills] = await Promise.all([
+    loadSkillsPrompt('zh'),
+    loadSkillsPrompt('en'),
+  ]);
+  const langNote =
+    zhSkills || enSkills
+      ? '\n\n## 行为技能（Skills）— 按访客语言生效\n仅应用与访客当前语言一致的一组技能；语言切换时随之切换，绝不混用两组。'
+      : '';
+  const blocks = [
+    zhSkills ? `<!-- lang:zh -->${zhSkills}` : '',
+    enSkills ? `<!-- lang:en -->${enSkills}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const instructions = `${await composeInstructions(RECRUITER_SYSTEM_PROMPT)}${langNote}${blocks}`;
 
   return new Agent({
     id: 'recruiter-agent',

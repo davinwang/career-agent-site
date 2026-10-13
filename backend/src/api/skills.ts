@@ -8,6 +8,7 @@ interface SkillRow {
   id: string;
   name: string;
   prompt: string;
+  lang: string;
   enabled: number;
   priority: number;
   created_at: string;
@@ -19,6 +20,7 @@ function toSkillDto(row: SkillRow) {
     id: row.id,
     name: row.name,
     prompt: row.prompt,
+    lang: row.lang ?? 'zh',
     enabled: !!row.enabled,
     priority: Number(row.priority),
     created_at: row.created_at,
@@ -28,6 +30,7 @@ function toSkillDto(row: SkillRow) {
 const createSkillSchema = z.object({
   name: z.string().min(1),
   prompt: z.string().min(1),
+  lang: z.enum(['zh', 'en']).default('zh'),
   priority: z.number().int().optional(),
 });
 
@@ -35,6 +38,7 @@ const updateSkillSchema = z
   .object({
     name: z.string().min(1).optional(),
     prompt: z.string().min(1).optional(),
+    lang: z.enum(['zh', 'en']).optional(),
     enabled: z.boolean().optional(),
     priority: z.number().int().optional(),
   })
@@ -47,7 +51,7 @@ export const skillRoutes = new Hono<AppEnv>();
  */
 skillRoutes.get('/', readAllowed, async (c) => {
   const rows = await all<SkillRow>(
-    'SELECT id, name, prompt, enabled, priority, created_at FROM skills ORDER BY priority DESC, created_at ASC',
+    'SELECT id, name, prompt, lang, enabled, priority, created_at FROM skills ORDER BY priority DESC, created_at ASC',
   );
   return c.json({ skills: rows.map(toSkillDto) });
 });
@@ -65,11 +69,12 @@ skillRoutes.post('/', adminRequired, async (c) => {
   const id = uuidv4();
   const now = new Date().toISOString();
   const priority = parsed.data.priority ?? 0;
+  const lang = parsed.data.lang ?? 'zh';
   await run(
-    'INSERT INTO skills (id, name, prompt, enabled, priority, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, parsed.data.name, parsed.data.prompt, 1, priority, now],
+    'INSERT INTO skills (id, name, prompt, lang, enabled, priority, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+    [id, parsed.data.name, parsed.data.prompt, lang, priority, now],
   );
-  return c.json(toSkillDto({ id, name: parsed.data.name, prompt: parsed.data.prompt, enabled: 1, priority, created_at: now }));
+  return c.json(toSkillDto({ id, name: parsed.data.name, prompt: parsed.data.prompt, lang, enabled: 1, priority, created_at: now }));
 });
 
 /**
@@ -98,6 +103,10 @@ skillRoutes.put('/:id', adminRequired, async (c) => {
   if (parsed.data.prompt !== undefined) {
     sets.push('prompt = ?');
     params.push(parsed.data.prompt);
+  }
+  if (parsed.data.lang !== undefined) {
+    sets.push('lang = ?');
+    params.push(parsed.data.lang);
   }
   if (parsed.data.enabled !== undefined) {
     sets.push('enabled = ?');
