@@ -3,7 +3,7 @@ import { useUi } from "../stores/ui";
 import { useT } from "../lib/i18n";
 import {
   IconChat,
-  IconSessions,
+  IconVisitors,
   IconDashboard,
 } from "./icons";
 import type { ComponentType, SVGProps } from "react";
@@ -18,7 +18,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/", labelKey: "nav.dashboard", hintKey: "nav.dashboardHint", Icon: IconDashboard },
   { to: "/chat", labelKey: "nav.chat", hintKey: "nav.chatHint", Icon: IconChat },
-  { to: "/sessions", labelKey: "nav.sessions", hintKey: "nav.sessionsHint", Icon: IconSessions },
+  { to: "/sessions", labelKey: "nav.visitors", hintKey: "nav.visitorsHint", Icon: IconVisitors },
 ];
 
 function Brand({ collapsed, brand }: { collapsed: boolean; brand: string }) {

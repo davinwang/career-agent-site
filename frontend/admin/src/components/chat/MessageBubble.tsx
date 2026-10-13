@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import type { ChatMessage } from "../../hooks/useSession";
 import ToolCallDisplay from "./ToolCallDisplay";
 import { useT } from "../../lib/i18n";
+import { IconAgentMark, IconMe } from "../icons";
 
 /** Very light markdown: ```code fences``` and `inline code`. No deps. */
 function renderContent(text: string) {
@@ -56,16 +57,22 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <div className={`rise flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <div
-        className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full font-display text-xs font-bold"
+        className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border"
         style={{
-          background: isUser ? "var(--accent)" : "var(--ink-700, #262019)",
-          color: "var(--color-paper-50)",
+          /* Avatar background = the speaker's bubble colour (design review). */
+          background: isUser ? "var(--accent-soft)" : "var(--surface)",
+          borderColor: isUser ? "var(--accent)" : "var(--rule)",
+          color: isUser ? "var(--accent)" : "var(--text, #262019)",
         }}
+        title={isUser ? t("chat.me") : "AI"}
       >
-        {isUser ? t("chat.me") : "AI"}
+        {isUser ? <IconMe width={16} height={16} /> : <IconAgentMark width={20} height={20} />}
       </div>
 
       <div className={`flex min-w-0 max-w-[85%] flex-col sm:max-w-[75%] ${isUser ? "items-end" : "items-start"}`}>
+        <span className="label mb-1 px-1 text-[0.58rem] tracking-[0.14em] text-[var(--text-muted)]">
+          {isUser ? t("chat.me") : t("chat.agentLabel")}
+        </span>
         {message.toolCalls.length > 0 && (
           <div className="w-full">
             {message.toolCalls.map((c) => (
@@ -76,10 +83,12 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
 
         {(message.content || message.streaming) && (
           <div
-            className="rounded-lg border px-4 py-2.5 text-[0.9rem] leading-relaxed"
+            className="border px-4 py-2.5 text-[0.9rem] leading-relaxed"
             style={{
               borderColor: isUser ? "var(--accent)" : "var(--rule)",
               background: isUser ? "var(--accent-soft)" : "var(--surface)",
+              /* Three rounded corners + one sharp corner pointing at the speaker's avatar. */
+              borderRadius: isUser ? "2px 12px 12px 12px" : "12px 12px 12px 2px",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
             }}

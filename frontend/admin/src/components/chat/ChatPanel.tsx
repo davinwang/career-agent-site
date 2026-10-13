@@ -8,7 +8,7 @@ import { ErrorNote, EmptyState } from "../ui";
 import { useT } from "../../lib/i18n";
 import { useIsGuest } from "../../hooks/useIsGuest";
 import { useKeyboardInset } from "../../hooks/useKeyboardInset";
-import { IconChat, IconChevron, IconResume } from "../icons";
+import { IconChat, IconChevron, IconMyChats, IconResume } from "../icons";
 
 interface SessionItem {
   id: string;
@@ -171,7 +171,8 @@ export default function ChatPanel() {
               aria-expanded={listOpen}
               aria-haspopup="listbox"
             >
-              {t("chat.sessions")}
+              <IconMyChats width={12} height={12} />
+              {t("chat.myChats")}
               <IconChevron
                 width={11}
                 height={11}
@@ -303,7 +304,12 @@ export default function ChatPanel() {
         <div
           ref={scrollRef}
           className="min-h-0 flex-1 space-y-5 overflow-y-auto rounded-lg border px-3 py-4 sm:px-5"
-          style={{ borderColor: "var(--rule)", background: "color-mix(in srgb, var(--surface) 55%, transparent)" }}
+          style={{
+            borderColor: "var(--rule)",
+            /* Colour hierarchy per design review: AI bubble lightest (surface),
+               chat background in between (bg), user bubble darkest. */
+            background: "var(--bg)",
+          }}
         >
           {error && (
             <div className="mb-2">

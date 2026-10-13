@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ChangeEvent, DragEvent } from "react";
 import { api } from "../../lib/api";
 import type { UploadOriginal } from "../../types/api";
+import type { ResumeData } from "../../types/resume";
 import { useT } from "../../lib/i18n";
 import { useIsGuest } from "../../hooks/useIsGuest";
 import { IconSend, IconPaperclip, IconSpinner, IconClose } from "../icons";
@@ -31,19 +32,27 @@ export default function ChatInput({
   const [dragging, setDragging] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploads, setUploads] = useState<UploadOriginal[]>([]);
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
+  const { lang } = useT();
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   // Counts nested dragenter/dragleave pairs so the overlay doesn't flicker.
   const dragDepth = useRef(0);
 
-  // Load the upload list lazily when the reference picker opens.
+  // Load the upload list + current-language résumé lazily when the picker opens.
   useEffect(() => {
-    if (!pickerOpen || uploads.length > 0) return;
+    if (!pickerOpen) return;
+    if (uploads.length === 0) {
+      api
+        .listUploads()
+        .then((r) => setUploads(r.uploads))
+        .catch(() => setUploads([]));
+    }
     api
-      .listUploads()
-      .then((r) => setUploads(r.uploads))
-      .catch(() => setUploads([]));
-  }, [pickerOpen, uploads.length]);
+      .getResume(lang)
+      .then((env) => setResumeData(env.data ?? null))
+      .catch(() => setResumeData(null));
+  }, [pickerOpen]);
 
   const submit = () => {
     const text = value.trim();
@@ -67,14 +76,36 @@ export default function ChatInput({
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   };
 
-  const reference = (u: UploadOriginal) => {
-    setValue((v) => {
-      const snippet = `请结合附件「${u.original_name}」`;
-      return v.includes(snippet) ? v : v ? `${snippet}，${v}` : `${snippet}回答：`;
-    });
+  // Unified `[@标签：名称]` reference snippets (same format as the recruiter end).
+  const insertRef = (snippet: string) => {
+    setValue((v) => (v.includes(snippet) ? v : v ? `${v} ${snippet}` : `${snippet} `));
     setPickerOpen(false);
     areaRef.current?.focus();
   };
+
+  const reference = (u: UploadOriginal) => {
+    insertRef(`[@${t("input.refGroupAttach")}：${u.original_name}]`);
+  };
+
+  // Resume reference entries: one per section item, plus summary/skills.
+  const resumeRefs = (() => {
+    if (!resumeData) return [] as { label: string; snippet: string }[];
+    const refs: { label: string; snippet: string }[] = [];
+    if (resumeData.summary) refs.push({ label: t("input.refSummary"), snippet: `[@${t("input.refSummary")}]` });
+    (resumeData.experience ?? []).forEach((e) => {
+      const role = (e as { role?: string; position?: string }).position ?? e.role ?? "";
+      refs.push({ label: `${e.company ?? ""} · ${role}`.replace(/ · $/, ""), snippet: `[@${t("input.refExperience")}：${e.company ?? ""} ${role}]` });
+    });
+    (resumeData.projects ?? []).forEach((p) =>
+      refs.push({ label: p.name ?? "", snippet: `[@${t("input.refProject")}：${p.name ?? ""}]` }),
+    );
+    (resumeData.education ?? []).forEach((e) =>
+      refs.push({ label: `${e.school ?? ""} ${e.degree ?? ""}`.trim(), snippet: `[@${t("input.refEducation")}：${e.school ?? ""}]` }),
+    );
+    if (Object.keys(resumeData.skills ?? {}).length > 0)
+      refs.push({ label: t("input.refSkills"), snippet: `[@${t("input.refSkills")}]` });
+    return refs;
+  })();
 
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0 || !onAttach) return;
@@ -112,14 +143,14 @@ export default function ChatInput({
 
   return (
     <div className="relative">
-      {/* Attachment reference picker */}
+      {/* Unified reference picker: résumé sections + attachments */}
       {pickerOpen && (
         <div
           className="absolute bottom-full left-0 z-10 mb-2 w-72 rounded-lg border p-2 shadow-lg"
           style={{ borderColor: "var(--rule)", background: "var(--surface)" }}
         >
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="label text-[0.6rem]">{t("input.referenceTitle")}</span>
+            <span className="label text-[0.6rem]">{t("input.refTitle")}</span>
             <button
               type="button"
               onClick={() => setPickerOpen(false)}
@@ -129,12 +160,32 @@ export default function ChatInput({
               <IconClose width={13} height={13} />
             </button>
           </div>
+
+          {resumeRefs.length > 0 && (
+            <>
+              <div className="label mb-1 mt-1 text-[0.55rem]">{t("input.refGroupResume")}</div>
+              <div className="max-h-44 space-y-0.5 overflow-y-auto">
+                {resumeRefs.map((r) => (
+                  <button
+                    key={r.snippet}
+                    type="button"
+                    onClick={() => insertRef(r.snippet)}
+                    className="block w-full truncate rounded-md px-2 py-1.5 text-left text-[0.74rem] transition-colors hover:bg-[var(--surface-sunken)]"
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="label mb-1 mt-2 text-[0.55rem]">{t("input.refGroupAttach")}</div>
           {uploads.length === 0 ? (
-            <div className="py-3 text-center text-xs text-[var(--text-muted)]">
+            <div className="py-2 text-center text-xs text-[var(--text-muted)]">
               {t("input.noUploads")}
             </div>
           ) : (
-            <div className="max-h-48 space-y-1 overflow-y-auto">
+            <div className="max-h-44 space-y-0.5 overflow-y-auto">
               {uploads.map((u) => (
                 <button
                   key={u.id}
@@ -149,6 +200,10 @@ export default function ChatInput({
                 </button>
               ))}
             </div>
+          )}
+
+          {resumeRefs.length === 0 && uploads.length === 0 && (
+            <div className="py-3 text-center text-xs text-[var(--text-muted)]">{t("input.refEmpty")}</div>
           )}
         </div>
       )}

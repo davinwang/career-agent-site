@@ -3,7 +3,7 @@ import { api, ApiError } from "../lib/api";
 import type { Session, Message } from "../types/api";
 import { useT } from "../lib/i18n";
 import { SectionHead, Card, Badge, Spinner, ErrorNote, EmptyState } from "../components/ui";
-import { IconSessions, IconSearch, IconChevron } from "../components/icons";
+import { IconSessions, IconSearch, IconChevron, IconAgentMark, IconMe } from "../components/icons";
 
 function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 8)}…` : id;
@@ -45,20 +45,28 @@ function Transcript({ messages, loading }: { messages: Message[]; loading: boole
         return (
           <div key={m.id} className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
             <div
-              className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-[0.65rem] font-bold"
+              className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border"
               style={{
-                background: isUser ? "var(--accent)" : "var(--ink-700,#262019)",
-                color: "var(--color-paper-50)",
+                /* Avatar background = the speaker's bubble colour (design review). */
+                background: isUser ? "var(--accent-soft)" : "var(--surface)",
+                borderColor: isUser ? "var(--accent)" : "var(--rule)",
+                color: isUser ? "var(--accent)" : "var(--text)",
               }}
+              title={isUser ? t("sessions.you") : "AI"}
             >
-              {isUser ? t("sessions.you") : "AI"}
+              {isUser ? <IconMe width={14} height={14} /> : <IconAgentMark width={18} height={18} />}
             </div>
             <div className={`min-w-0 max-w-[80%] ${isUser ? "text-right" : ""}`}>
+              <div className="label mb-1 px-1 text-[0.55rem]">
+                {isUser ? t("sessions.recruiterLabel") : t("sessions.agentLabel")}
+              </div>
               <div
-                className="inline-block whitespace-pre-wrap break-words rounded-lg border px-3.5 py-2 text-left text-[0.86rem] leading-relaxed"
+                className="inline-block whitespace-pre-wrap break-words border px-3.5 py-2 text-left text-[0.86rem] leading-relaxed"
                 style={{
                   borderColor: isUser ? "var(--accent)" : "var(--rule)",
                   background: isUser ? "var(--accent-soft)" : "var(--surface)",
+                  /* Three rounded corners + one sharp corner pointing at the speaker's avatar. */
+                  borderRadius: isUser ? "2px 12px 12px 12px" : "12px 12px 12px 2px",
                 }}
               >
                 {m.content}

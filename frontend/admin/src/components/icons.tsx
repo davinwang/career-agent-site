@@ -55,10 +55,44 @@ export const IconSkills = (p: IconProps) => (
   </svg>
 );
 
+/** Compass star — the mentor/agent mark: guidance within the dossier. */
+export const IconAgentMark = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="8.4" strokeWidth="1.1" />
+    <path d="M12 5.6 13.7 10.3 18.4 12 13.7 13.7 12 18.4 10.3 13.7 5.6 12 10.3 10.3Z" strokeWidth="1.2" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+/** Person mark for the current user's avatar. */
+export const IconMe = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="8.2" r="3.4" />
+    <path d="M5.5 19.5c1.2-3.4 3.6-5 6.5-5s5.3 1.6 6.5 5" strokeLinecap="round" />
+  </svg>
+);
+
 export const IconSessions = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
     <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+/** Visitors (recruiter session inbox): person with an incoming chat bubble. */
+export const IconVisitors = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+    <path d="M15 4h5.5a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5H19l-2.5 2v-2H15a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 15 4Z" />
+  </svg>
+);
+
+/** My chats (admin mentor sessions): stacked speech bubbles. */
+export const IconMyChats = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+    <path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-4-3h-4" />
   </svg>
 );
 
