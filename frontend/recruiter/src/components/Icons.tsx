@@ -116,11 +116,45 @@ export function ChatIcon(props: IconProps) {
   );
 }
 
+/** Compass star — the mentor/agent mark: guidance within the dossier. */
+export function AgentMarkIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="8.4" strokeWidth="1.1" />
+      <path d="M12 5.6 13.7 10.3 18.4 12 13.7 13.7 12 18.4 10.3 13.7 5.6 12 10.3 10.3Z" strokeWidth="1.2" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function SparkIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
       <path d="M12 3.2 13.9 9 19.8 11 13.9 13 12 18.8 10.1 13 4.2 11 10.1 9 12 3.2Z" />
       <path d="M18.4 16.6 19.2 19l2.4.8-2.4.8-.8 2.4" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
+/** Person mark for the current user (mirrors the admin console's IconMe). */
+export function UserIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="8.2" r="3.4" />
+      <path d="M5.5 19.5c1.2-3.4 3.6-5 6.5-5s5.3 1.6 6.5 5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function PaperclipIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path
+        d="m20.3 11.2-8.5 8.5a5.1 5.1 0 0 1-7.2-7.2l8.9-8.9a3.4 3.4 0 0 1 4.8 4.8l-8.9 8.9a1.7 1.7 0 0 1-2.4-2.4l8.2-8.2"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

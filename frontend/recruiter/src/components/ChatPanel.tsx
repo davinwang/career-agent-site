@@ -9,20 +9,28 @@ import {
 } from 'react';
 import { useChat } from '../hooks/useChat';
 import { getSuggestedPrompts, type UiStrings } from '../lib/i18n';
+import { fetchRecruiterSkills, type RecruiterSkill } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
+import { fetchAttachments, uploadAttachment, type VisitorAttachment } from '../lib/api';
 import { clockTime, cx } from '../lib/utils';
-import type { ChatMessage } from '../types/resume';
+import type { ChatMessage, ResumeData } from '../types/resume';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { ASK_EVENT } from './resume/Projects';
+import ProjectPrompts from './ProjectPrompts';
+import SkillStrip from './SkillStrip';
 import {
   AlertIcon,
   ArrowRight,
   ChatIcon,
   ChevronDown,
   CloseIcon,
+  DocIcon,
   SendIcon,
+  AgentMarkIcon,
+  PaperclipIcon,
   SparkIcon,
   StopIcon,
+  UserIcon,
 } from './Icons';
 
 interface Props {
@@ -32,6 +40,8 @@ interface Props {
   /** `dock` = always-visible desktop pane, `sheet` = mobile bottom sheet */
   variant?: 'dock' | 'sheet';
   candidateName?: string;
+  /** Published résumé for the current language — feeds the @ reference picker. */
+  resumeData?: ResumeData | null;
   onClose?: () => void;
   onNewThread: () => void;
 }
@@ -60,9 +70,9 @@ function AgentAvatar() {
   return (
     <span
       aria-hidden
-      className="mt-[3px] grid h-6 w-6 shrink-0 place-items-center border border-accent/40 bg-accentsoft text-accent"
+      className="mt-[3px] grid h-7 w-7 shrink-0 place-items-center border border-hair bg-surface text-soft"
     >
-      <SparkIcon className="h-3.5 w-3.5" />
+      <AgentMarkIcon className="h-4 w-4" />
     </span>
   );
 }
@@ -77,7 +87,16 @@ function Bubble({ msg, t }: { msg: ChatMessage; t: UiStrings }) {
 
   return (
     <div className={cx('flex w-full gap-2.5', isUser ? 'justify-end' : 'justify-start')}>
-      {!isUser ? <AgentAvatar /> : null}
+      {isUser ? (
+        <span
+          aria-hidden
+          className="mt-[3px] grid h-7 w-7 shrink-0 place-items-center border border-accent/40 bg-accentsoft text-accent"
+        >
+          <UserIcon className="h-4 w-4" />
+        </span>
+      ) : (
+        <AgentAvatar />
+      )}
 
       <div className={cx('flex min-w-0 max-w-[86%] flex-col', isUser && 'items-end')}>
         <span className="sys-label mb-1 tracking-[0.16em]">
@@ -123,6 +142,7 @@ export function ChatPanel({
   t,
   variant = 'dock',
   candidateName,
+  resumeData,
   onClose,
   onNewThread,
 }: Props) {
@@ -131,6 +151,40 @@ export function ChatPanel({
 
   const [draft, setDraft] = useState('');
   const [pinned, setPinned] = useState(true);
+  const [promptsOpen, setPromptsOpen] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
+  const [attaching, setAttaching] = useState(false);
+  const [attachNote, setAttachNote] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [uploads, setUploads] = useState<VisitorAttachment[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [skills, setSkills] = useState<RecruiterSkill[]>([]);
+
+  // Current-language skills for the "view prompts" popover (names only).
+  useEffect(() => {
+    let active = true;
+    fetchRecruiterSkills(lang).then((s) => {
+      if (active) setSkills(s);
+    });
+    return () => {
+      active = false;
+    };
+  }, [lang]);
+
+  // Public feature flags: show the "visit admin console" invitation only
+  // when the backend has ALLOW_GUEST_MODE=true.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/public/config')
+      .then((r) => (r.ok ? r.json() : { guestMode: false }))
+      .then((c: { guestMode?: boolean }) => {
+        if (active) setGuestMode(Boolean(c.guestMode));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const composing = useRef(false);
@@ -224,6 +278,61 @@ export function ChatPanel({
     onNewThread();
   };
 
+  // ── attachments (JD etc.) ────────────────────────────────────────────────
+  // Refresh the picker list whenever it opens; uploads are per-session.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    fetchAttachments(sessionId).then(setUploads).catch(() => setUploads([]));
+  }, [pickerOpen, sessionId]);
+
+  const handleAttach = async (files: File[]) => {
+    if (files.length === 0) return;
+    setAttaching(true);
+    setAttachNote(null);
+    try {
+      for (const f of files) {
+        const r = await uploadAttachment(sessionId, f);
+        setAttachNote(r.ok ? `${f.name} · ${t.chat.attachDone}` : `${t.chat.attachFail}: ${r.error}`);
+        if (r.ok) setUploads((u) => [...u, r.attachment]);
+      }
+    } finally {
+      setAttaching(false);
+    }
+  };
+
+  // Unified reference snippets. Both ends insert the same `[@标签：名称]` form;
+  // the agent resolves them via getFullResume / searchKnowledge / attachments.
+  const insertRef = (snippet: string) => {
+    setDraft((d) => (d.includes(snippet) ? d : d ? `${d} ${snippet}` : `${snippet} `));
+    setPickerOpen(false);
+    taRef.current?.focus();
+  };
+
+  const reference = (u: VisitorAttachment) => {
+    insertRef(t.chat.refSnippet.replace('{name}', u.original_name));
+  };
+
+  // Resume reference entries: one per section item, plus summary/skills.
+  const resumeRefs = useMemo(() => {
+    if (!resumeData) return [] as { label: string; snippet: string }[];
+    const zh = isZh;
+    const refs: { label: string; snippet: string }[] = [];
+    if (resumeData.summary) refs.push({ label: t.chat.refSummary, snippet: `[@${t.chat.refSummary}]` });
+    resumeData.experience.forEach((e) =>
+      refs.push({ label: `${e.company} · ${e.role}`, snippet: `[@${t.chat.refExperience}：${e.company} ${e.role}]` }),
+    );
+    resumeData.projects.forEach((p) =>
+      refs.push({ label: p.name, snippet: `[@${t.chat.refProject}：${p.name}]` }),
+    );
+    resumeData.education.forEach((e) =>
+      refs.push({ label: `${e.school} ${e.degree}`, snippet: `[@${t.chat.refEducation}：${e.school}]` }),
+    );
+    if (Object.keys(resumeData.skills).length > 0)
+      refs.push({ label: t.chat.refSkills, snippet: `[@${t.chat.refSkills}]` });
+    void zh;
+    return refs;
+  }, [resumeData, isZh, t]);
+
   const sheet = variant === 'sheet';
 
   return (
@@ -259,10 +368,30 @@ export function ChatPanel({
             <span className="hidden truncate font-mono text-[9.5px] tracking-[0.1em] text-mute sm:inline">
               {candidateName ? `${t.masthead.candidate}: ${candidateName}` : t.chat.subtitle}
             </span>
+            {guestMode ? (
+              <a
+                className="hidden font-mono text-[9.5px] tracking-[0.1em] text-accent underline decoration-dotted underline-offset-2 hover:text-ink sm:inline"
+                href="/admin/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t.chat.visitAdmin} →
+              </a>
+            ) : null}
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            className="icon-btn relative"
+            onClick={() => setPromptsOpen((v) => !v)}
+            title={t.chat.viewPrompts}
+            aria-label={t.chat.viewPrompts}
+            aria-expanded={promptsOpen}
+          >
+            <DocIcon className="h-4 w-4" />
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -280,11 +409,57 @@ export function ChatPanel({
         </div>
       </header>
 
+      {/* ── "view prompts" popover (PC) / full sheet (mobile) ─────────────── */}
+      {promptsOpen ? (
+        <>
+          {/* click-away backdrop (mobile full-screen dim, PC transparent) */}
+          <div
+            className="fixed inset-0 z-30 bg-black/25 sm:bg-transparent"
+            onClick={() => setPromptsOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-label={t.chat.viewPrompts}
+            className="fixed inset-x-3 top-14 z-40 animate-[pop-in_0.2s_ease-out_both] border border-rule bg-surface p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-3 sm:top-12 sm:w-80 sm:p-3.5"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-accent">
+                {t.chat.viewPrompts}
+              </span>
+              <button
+                type="button"
+                className="text-mute transition-colors hover:text-accent"
+                onClick={() => setPromptsOpen(false)}
+                aria-label={t.chat.close}
+              >
+                <CloseIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {skills.length === 0 ? (
+              <p className="py-2 text-[12px] text-mute">{t.chat.promptsEmpty}</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {skills.map((s) => (
+                  <li key={s.id} className="border border-rule bg-raised/60 px-2.5 py-2">
+                    <p className="m-0 font-mono text-[11px] tracking-[0.06em] text-ink">{s.name}</p>
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-soft">{s.prompt}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2.5 border-t border-dashed border-rule pt-2 text-[10.5px] leading-relaxed text-mute">
+              {t.chat.promptsNote}
+            </p>
+          </div>
+        </>
+      ) : null}
+
       {/* ── transcript ───────────────────────────────────────────────────── */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="scroll-slim relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-5"
+        className="scroll-slim relative z-[1] min-h-0 flex-1 overflow-y-auto overscroll-contain bg-paper px-4 py-5 sm:px-5"
         role="log"
         aria-live="polite"
         aria-relevant="additions text"
@@ -361,6 +536,10 @@ export function ChatPanel({
         </button>
       ) : null}
 
+      {/* ── per-project question prompts (project card focus) ────────────── */}
+      <ProjectPrompts lang={lang} t={t} />
+      <SkillStrip lang={lang} t={t} />
+
       {/* ── composer ─────────────────────────────────────────────────────── */}
       <footer
         className="relative z-10 shrink-0 border-t border-rule px-4 pt-3 sm:px-5"
@@ -371,7 +550,107 @@ export function ChatPanel({
         }}
       >
         <div className="mx-auto w-full max-w-[46rem]">
+          {/* unified reference picker: résumé sections + attachments */}
+          {pickerOpen && (
+            <div
+              className="absolute bottom-full left-4 z-30 mb-2 w-72 border border-rule bg-surface p-2 shadow-xl sm:left-5"
+              role="listbox"
+              aria-label={t.chat.refTitle}
+            >
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="sys-label m-0">{t.chat.refTitle}</span>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(false)}
+                  className="text-mute transition-colors hover:text-accent"
+                  aria-label={t.chat.close}
+                >
+                  <CloseIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {resumeRefs.length > 0 && (
+                <>
+                  <div className="sys-label mb-1 mt-1">{t.chat.refGroupResume}</div>
+                  <div className="scroll-slim max-h-44 space-y-0.5 overflow-y-auto">
+                    {resumeRefs.map((r) => (
+                      <button
+                        key={r.snippet}
+                        type="button"
+                        onClick={() => insertRef(r.snippet)}
+                        className="block w-full truncate px-2 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-paper"
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="sys-label mb-1 mt-2">{t.chat.refGroupAttach}</div>
+              {uploads.length === 0 ? (
+                <div className="py-2 text-center text-[11px] text-mute">{t.chat.noAttachments}</div>
+              ) : (
+                <div className="scroll-slim max-h-44 space-y-0.5 overflow-y-auto">
+                  {uploads.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => reference(u)}
+                      className="block w-full px-2 py-1.5 text-left transition-colors hover:bg-paper"
+                    >
+                      <div className="truncate text-[12px] font-medium text-ink">{u.original_name}</div>
+                      <div className="sys-label m-0">{(u.size / 1024).toFixed(0)} KB</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {resumeRefs.length === 0 && uploads.length === 0 && (
+                <div className="py-3 text-center text-[11px] text-mute">{t.chat.refEmpty}</div>
+              )}
+            </div>
+          )}
+
+          {attachNote && (
+            <p className="sys-label mb-1.5 flex items-center gap-1.5 normal-case tracking-[0.06em] text-accent">
+              <PaperclipIcon className="h-3 w-3" />
+              <span className="min-w-0 truncate">{attachNote}</span>
+            </p>
+          )}
+
           <div className="composer">
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={async (e) => {
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = '';
+                await handleAttach(files);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={attaching}
+              aria-label={t.chat.attach}
+              title={t.chat.attach}
+              className="icon-btn shrink-0 disabled:opacity-50"
+            >
+              <PaperclipIcon className={cx('h-4 w-4', attaching && 'animate-pulse')} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickerOpen((o) => !o)}
+              aria-label={t.chat.reference}
+              title={t.chat.reference}
+              className="icon-btn shrink-0"
+              style={{ color: pickerOpen ? 'var(--c-accent)' : undefined }}
+            >
+              <span className="font-mono text-[10px] font-semibold tracking-[0.08em]">@</span>
+            </button>
             <textarea
               ref={taRef}
               rows={1}

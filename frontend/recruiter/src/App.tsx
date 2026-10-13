@@ -109,6 +109,7 @@ function RecruiterPortal() {
           t={t}
           variant={variant}
           candidateName={data?.name}
+          resumeData={data}
           onClose={variant === 'sheet' ? closeSheet : undefined}
           onNewThread={resetSession}
         />
